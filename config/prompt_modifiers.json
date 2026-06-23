@@ -1,0 +1,13 @@
+{
+  "sales_framework": "Pattern Interrupt Cold-Open",
+  "tactics_enforced": [
+    "Assumptive close formatting",
+    "Perceived scarcity integration",
+    "Anchoring premium tier alternatives first"
+  ],
+  "constraints": [
+    "Never use generic store greetings like 'Welcome to our store'",
+    "Avoid specifying exact clothing brands to prevent privacy creepiness; describe colors and styles broadly",
+    "Keep responses concise (under 3 sentences per speaking turn) to sustain interactive cadence"
+  ]
+}

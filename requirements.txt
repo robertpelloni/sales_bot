@@ -1,0 +1,6 @@
+opencv-python-headless
+ultralytics
+redis
+google-genai
+openai
+pytest

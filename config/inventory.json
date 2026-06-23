@@ -1,0 +1,23 @@
+{
+  "store_name": "Apex Tech Boutique",
+  "items": [
+    {
+      "product_name": "AeroFoam Noise-Canceling Headphones",
+      "price_usd": 180.00,
+      "unique_selling_points": [
+        "Hybrid Active Noise Cancellation blocks 99% of urban chatter",
+        "Ultra-light carbon fiber frame - won't cause ear fatigue on commutes",
+        "Massive 40-hour battery runtime with Type-C rapid charging"
+      ]
+    },
+    {
+      "product_name": "HydroShield Minimalist Backpack",
+      "price_usd": 95.00,
+      "unique_selling_points": [
+        "Military-grade waterproof ballistic nylon mesh fabric",
+        "Hidden anti-theft tech compartment accessible only from the interior back panel",
+        "Integrated USB-C pass-through charging routing"
+      ]
+    }
+  ]
+}
