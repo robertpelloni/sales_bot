@@ -10,20 +10,36 @@ async def process_audio_chunks():
     await pubsub.subscribe('AUDIO_CHUNK_READY')
     print("Listening for audio chunks...")
 
-    # Pre-compile the piper command if using piper
-    # E.g. echo "Hello" | piper --model en_US-lessac-medium.onnx --output_file - | aplay
-    # Using a placeholder since we don't have piper installed globally on the system here or proper voice models.
-    # In a real environment, you'd use a subprocess that interacts with the piper executable.
+    PIPER_EXEC = "vendor/piper/piper"
+    MODEL = "en_US-lessac-medium.onnx"
+
+    # Simple check if binary exists
+    piper_available = os.path.isfile(PIPER_EXEC)
 
     async for message in pubsub.listen():
         if message['type'] == 'message':
             chunk = message['data'].decode('utf-8')
             print(f"[Audio Output] Speaking: {chunk}")
 
-            # Using basic echo for demonstration or espeak. In real world, use vendor/piper.
-            # Example piper invocation:
-            # subprocess.run(["vendor/piper/piper", "--model", "en_US-lessac-medium.onnx", "--output_file", "output.wav"], input=chunk.encode())
-            # subprocess.run(["aplay", "output.wav"])
+            if piper_available:
+                # Pipe string directly into piper and into aplay for instant playback securely
+                try:
+                    # Use a shell with shlex quoting to prevent injection
+                    import shlex
+                    safe_chunk = shlex.quote(chunk)
+                    command = f'echo {safe_chunk} | {PIPER_EXEC} --model {MODEL} --output_file - | aplay -q'
+
+                    process = await asyncio.create_subprocess_shell(
+                        command,
+                        stdout=asyncio.subprocess.PIPE,
+                        stderr=asyncio.subprocess.PIPE
+                    )
+                    await process.communicate()
+                except Exception as e:
+                    print(f"[Audio Output] Error running piper: {e}")
+            else:
+                # Fallback to simple print if piper is not built yet
+                pass
 
 if __name__ == "__main__":
     asyncio.run(process_audio_chunks())

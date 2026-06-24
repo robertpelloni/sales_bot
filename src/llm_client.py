@@ -81,10 +81,16 @@ async def handle_detection():
                         buffer += text_chunk
 
                         # Check for sentence-ending punctuation
-                        if re.search(r'[.!?]\s', buffer) or buffer.endswith(('.', '!', '?')):
-                            # Emit chunk to TTS
+                        match = re.search(r'([.!?])(\s+.*)?$', buffer)
+                        if match and not buffer.endswith(('.', '!', '?')):
+                            # End of sentence found, split it correctly
+                            split_index = match.start(1) + 1
+                            sentence = buffer[:split_index].strip()
+                            buffer = buffer[split_index:].lstrip()
+                            await r.publish('AUDIO_CHUNK_READY', sentence)
+                        elif buffer.endswith(('.', '!', '?')):
                             await r.publish('AUDIO_CHUNK_READY', buffer.strip())
-                            buffer = "" # Reset buffer
+                            buffer = ""
 
                 # Flush remaining buffer
                 if buffer.strip():

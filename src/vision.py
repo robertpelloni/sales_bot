@@ -11,7 +11,7 @@ from ultralytics import YOLO
 r = redis.Redis(host='localhost', port=6379, db=0)
 
 # Load YOLO model
-model = YOLO('yolov8n.pt')
+model = YOLO('yolov11n.pt')
 
 # Target properties
 DWELL_TIME_THRESHOLD = 1.5
@@ -19,16 +19,20 @@ MIN_CONFIDENCE = 0.5
 TRACK_HISTORY = defaultdict(lambda: [])
 START_TIMES = {}
 
+def capture_and_track(cap):
+    success, frame = cap.read()
+    if not success:
+        return False, None, None
+    results = model.track(frame, persist=True, classes=[0], conf=MIN_CONFIDENCE) # class 0 is person
+    return True, frame, results
+
 async def process_video_stream(video_source=0):
     cap = cv2.VideoCapture(video_source)
 
     while cap.isOpened():
-        success, frame = cap.read()
+        success, frame, results = await asyncio.to_thread(capture_and_track, cap)
         if not success:
             break
-
-        # Run YOLO inference
-        results = model.track(frame, persist=True, classes=[0], conf=MIN_CONFIDENCE) # class 0 is person
 
         if results[0].boxes.id is not None:
             boxes = results[0].boxes.xyxy.cpu()
