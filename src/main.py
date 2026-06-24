@@ -1,8 +1,9 @@
 import asyncio
 import sys
 from src.vision import process_video_stream
-from src.llm_client import handle_detection
+from src.llm_client import handle_events
 from src.audio_output import process_audio_chunks
+from src.audio_input import process_audio_input
 
 async def main():
     print("Starting Project Sirens Orchestrator...")
@@ -13,8 +14,9 @@ async def main():
     # Run all tasks concurrently
     await asyncio.gather(
         process_video_stream(video_source=video_source),
-        handle_detection(),
-        process_audio_chunks()
+        handle_events(),
+        process_audio_chunks(),
+        process_audio_input()
     )
 
 if __name__ == "__main__":

@@ -2,3 +2,4 @@ __pycache__/
 *.pyc
 yolov8n.pt
 yolov11n.pt
+dump.rdb

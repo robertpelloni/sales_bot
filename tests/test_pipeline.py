@@ -4,7 +4,7 @@ import base64
 import unittest
 from unittest.mock import patch, MagicMock
 import redis.asyncio as redis
-from src.llm_client import handle_detection
+from src.llm_client import handle_events
 from src.audio_output import process_audio_chunks
 
 class TestPipeline(unittest.IsolatedAsyncioTestCase):
@@ -49,7 +49,7 @@ class TestPipeline(unittest.IsolatedAsyncioTestCase):
         mock_create.return_value = AsyncMockStream()
 
         # Start listeners in the background
-        llm_task = asyncio.create_task(handle_detection())
+        llm_task = asyncio.create_task(handle_events())
         audio_task = asyncio.create_task(process_audio_chunks())
 
         # Allow them to subscribe
