@@ -20,7 +20,19 @@ def load_config():
 
 INVENTORY, MODIFIERS = load_config()
 
-SYSTEM_PROMPT = f"""
+async def get_dynamic_system_prompt():
+    # Pull real-time feedback metrics from Redis to inject into the prompt
+    conversions_bytes = await r.get("metric:total_conversions")
+    conversions = int(conversions_bytes.decode('utf-8')) if conversions_bytes else 0
+
+    # If conversions are high, lean into the successful strategy
+    feedback_injection = ""
+    if conversions > 0:
+        feedback_injection = f"REAL-TIME FEEDBACK: You have successfully converted {conversions} customers today. Continue leveraging your current aggressive closing tactics."
+    else:
+        feedback_injection = "REAL-TIME FEEDBACK: Conversion rate is currently low. A/B Test your approach: try leaning more into empathetic storytelling rather than aggressive features."
+
+    return f"""
 You are an elite, highly charismatic, and observant retail sales professional operating an interactive storefront kiosk.
 Your objective is to capture attention, build instant rapport, identify friction points, and close sales using advanced conversational framework strategies.
 
@@ -31,8 +43,11 @@ Inventory:
 Tactics to enforce: {', '.join(MODIFIERS['tactics_enforced'])}
 Constraints: {', '.join(MODIFIERS['constraints'])}
 
+{feedback_injection}
+
 IMPORTANT: Match your greeting to the visual attributes provided in the user's message using a 'Pattern Interrupt Cold-Open'. Do not use generic store greetings.
 If the customer replies, match their pacing and use the Assumptive Close or Ben Franklin Close if they show friction over features or price.
+If the customer shows direct intent to purchase or agrees to buy, explicitly state "CONVERSION_SUCCESS_TRIGGER" in your response exactly as written.
 """
 
 async def fetch_session_history(track_id):
@@ -69,16 +84,26 @@ async def handle_llm_stream(track_id, messages):
                     split_index = match.start(1) + 1
                     sentence = buffer[:split_index].strip()
                     buffer = buffer[split_index:].lstrip()
-                    await r.publish('AUDIO_CHUNK_READY', sentence)
+                    safe_sentence = sentence.replace("CONVERSION_SUCCESS_TRIGGER", "").strip()
+                    if safe_sentence:
+                        await r.publish('AUDIO_CHUNK_READY', safe_sentence)
                 elif buffer.endswith(('.', '!', '?')):
-                    await r.publish('AUDIO_CHUNK_READY', buffer.strip())
+                    safe_sentence = buffer.strip().replace("CONVERSION_SUCCESS_TRIGGER", "").strip()
+                    if safe_sentence:
+                        await r.publish('AUDIO_CHUNK_READY', safe_sentence)
                     buffer = ""
 
         # Flush remaining buffer
         if buffer.strip():
-            await r.publish('AUDIO_CHUNK_READY', buffer.strip())
+            safe_sentence = buffer.strip().replace("CONVERSION_SUCCESS_TRIGGER", "").strip()
+            if safe_sentence:
+                await r.publish('AUDIO_CHUNK_READY', safe_sentence)
 
-        return full_response
+        if "CONVERSION_SUCCESS_TRIGGER" in full_response:
+            # Emit success to analytics and trim the trigger from TTS output if missed
+            await r.publish('CUSTOMER_CONVERTED', json.dumps({"id": track_id}))
+
+        return full_response.replace("CONVERSION_SUCCESS_TRIGGER", "")
 
     except Exception as e:
         print(f"[LLM Client] Error generating response: {e}")
@@ -121,8 +146,9 @@ async def handle_events():
                     }
                 ]
 
+                sys_prompt = await get_dynamic_system_prompt()
                 messages = [
-                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "system", "content": sys_prompt},
                     {"role": "user", "content": user_content}
                 ]
 
@@ -141,7 +167,8 @@ async def handle_events():
                 history = await fetch_session_history(track_id)
                 if not history:
                     # Fallback if history expired but they replied
-                    history = [{"role": "system", "content": SYSTEM_PROMPT}]
+                    sys_prompt = await get_dynamic_system_prompt()
+                    history = [{"role": "system", "content": sys_prompt}]
 
                 # Append customer reply
                 history.append({"role": "user", "content": customer_text})

@@ -3,3 +3,4 @@ __pycache__/
 yolov8n.pt
 yolov11n.pt
 dump.rdb
+analytics.db
