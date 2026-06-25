@@ -4,3 +4,5 @@ redis
 google-genai
 openai
 pytest
+fastapi
+uvicorn

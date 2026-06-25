@@ -1,4 +1,8 @@
 # CHANGELOG
+## [0.3.0] - Vendor Dashboard Integration
+- Added `src/dashboard.py` (FastAPI) allowing vendors to view real-time funnel analytics.
+- Integrated dashboard webserver into the main event loop.
+
 ## [0.2.0] - Analytics & Conversational Upgrades
 - Created `src/analytics.py` for SQLite tracking of the conversion funnel.
 - Implemented real-time dynamic system prompts based on total conversion feedback loop.
