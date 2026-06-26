@@ -5,9 +5,6 @@ import re
 from openai import AsyncOpenAI
 import redis.asyncio as redis
 
-# Connect to Redis
-r = redis.Redis(host='localhost', port=6379, db=0)
-
 # Init OpenAI client (Requires OPENAI_API_KEY environment variable)
 client = AsyncOpenAI(api_key=os.environ.get("OPENAI_API_KEY", "mock-key"))
 
@@ -20,7 +17,7 @@ def load_config():
 
 INVENTORY, MODIFIERS = load_config()
 
-async def get_dynamic_system_prompt():
+async def get_dynamic_system_prompt(r):
     # Pull real-time feedback metrics from Redis to inject into the prompt
     conversions_bytes = await r.get("metric:total_conversions")
     conversions = int(conversions_bytes.decode('utf-8')) if conversions_bytes else 0
@@ -50,17 +47,17 @@ If the customer replies, match their pacing and use the Assumptive Close or Ben 
 If the customer shows direct intent to purchase or agrees to buy, explicitly state "CONVERSION_SUCCESS_TRIGGER" in your response exactly as written.
 """
 
-async def fetch_session_history(track_id):
+async def fetch_session_history(r, track_id):
     history_json = await r.get(f"session:{track_id}")
     if history_json:
         return json.loads(history_json.decode('utf-8'))
     return []
 
-async def save_session_history(track_id, history):
+async def save_session_history(r, track_id, history):
     # Set an expiration of 5 minutes for session history
-    await r.setex(f"session:{track_id}", 300, json.dumps(history))
+    await r.set(f"session:{track_id}", json.dumps(history), ex=300)
 
-async def handle_llm_stream(track_id, messages):
+async def handle_llm_stream(r, track_id, messages):
     try:
         response = await client.chat.completions.create(
             model="gpt-4o-mini",
@@ -110,6 +107,7 @@ async def handle_llm_stream(track_id, messages):
         return ""
 
 async def handle_events():
+    r = redis.Redis(host='localhost', port=6379, db=0)
     pubsub = r.pubsub()
     await pubsub.subscribe('CUSTOMER_DETECTED', 'CUSTOMER_REPLY')
     print("LLM Client listening for detections and replies...")
@@ -127,7 +125,7 @@ async def handle_events():
                 print(f"[LLM Client] Received detection for ID {track_id}")
 
                 # Fetch history to ensure we don't cold-open someone we're already talking to
-                history = await fetch_session_history(track_id)
+                history = await fetch_session_history(r, track_id)
                 if len(history) > 0:
                     print(f"[LLM Client] ID {track_id} already has an active session. Ignoring re-trigger.")
                     continue
@@ -146,17 +144,17 @@ async def handle_events():
                     }
                 ]
 
-                sys_prompt = await get_dynamic_system_prompt()
+                sys_prompt = await get_dynamic_system_prompt(r)
                 messages = [
                     {"role": "system", "content": sys_prompt},
                     {"role": "user", "content": user_content}
                 ]
 
-                full_response = await handle_llm_stream(track_id, messages)
+                full_response = await handle_llm_stream(r, track_id, messages)
 
                 # Save state
                 messages.append({"role": "assistant", "content": full_response})
-                await save_session_history(track_id, messages)
+                await save_session_history(r, track_id, messages)
 
             elif channel == 'CUSTOMER_REPLY':
                 track_id = data['id']
@@ -164,21 +162,21 @@ async def handle_events():
 
                 print(f"[LLM Client] Received reply from ID {track_id}: {customer_text}")
 
-                history = await fetch_session_history(track_id)
+                history = await fetch_session_history(r, track_id)
                 if not history:
                     # Fallback if history expired but they replied
-                    sys_prompt = await get_dynamic_system_prompt()
+                    sys_prompt = await get_dynamic_system_prompt(r)
                     history = [{"role": "system", "content": sys_prompt}]
 
                 # Append customer reply
                 history.append({"role": "user", "content": customer_text})
 
                 # Stream response
-                full_response = await handle_llm_stream(track_id, history)
+                full_response = await handle_llm_stream(r, track_id, history)
 
                 # Save state
                 history.append({"role": "assistant", "content": full_response})
-                await save_session_history(track_id, history)
+                await save_session_history(r, track_id, history)
 
 if __name__ == "__main__":
     asyncio.run(handle_events())

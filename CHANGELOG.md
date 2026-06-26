@@ -1,4 +1,7 @@
 # CHANGELOG
+## [0.3.1] - Distance Calibration
+- Added strict distance calibration to `src/vision.py` using bounding box height metrics, requiring customers to be close to the kiosk to trigger.
+
 ## [0.3.0] - Vendor Dashboard Integration
 - Added `src/dashboard.py` (FastAPI) allowing vendors to view real-time funnel analytics.
 - Integrated dashboard webserver into the main event loop.

@@ -16,6 +16,7 @@ model = YOLO('yolov11n.pt')
 # Target properties
 DWELL_TIME_THRESHOLD = 1.5
 MIN_CONFIDENCE = 0.5
+MIN_PROXIMITY_RATIO = 0.6  # Bounding box must occupy 60% of frame height
 TRACK_HISTORY = defaultdict(lambda: [])
 START_TIMES = {}
 
@@ -39,15 +40,25 @@ async def process_video_stream(video_source=0):
             track_ids = results[0].boxes.id.int().cpu().tolist()
 
             for box, track_id in zip(boxes, track_ids):
-                # We could calculate the distance based on box dimensions here if calibrated
+                x1, y1, x2, y2 = map(int, box)
+                box_height = y2 - y1
+                frame_height = frame.shape[0]
 
-                # Check for dwell time
+                # Proximity calculation
+                proximity_ratio = box_height / float(frame_height)
+
+                # Check for dwell time and proximity
                 current_time = time.time()
                 if track_id not in START_TIMES:
-                    START_TIMES[track_id] = current_time
+                    if proximity_ratio >= MIN_PROXIMITY_RATIO:
+                        START_TIMES[track_id] = current_time
                 elif current_time - START_TIMES[track_id] >= DWELL_TIME_THRESHOLD:
+                    if proximity_ratio < MIN_PROXIMITY_RATIO:
+                        # Reset tracking if they back away
+                        del START_TIMES[track_id]
+                        continue
+
                     # Capture the target
-                    x1, y1, x2, y2 = map(int, box)
                     cropped_frame = frame[max(0, y1):min(frame.shape[0], y2), max(0, x1):min(frame.shape[1], x2)]
 
                     if cropped_frame.size > 0:
