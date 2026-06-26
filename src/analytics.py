@@ -16,26 +16,44 @@ def init_db():
             session_id INTEGER PRIMARY KEY,
             timestamp TEXT,
             status TEXT,
-            last_message TEXT
+            last_message TEXT,
+            strategy TEXT
         )
     ''')
+    # Add strategy column if it doesn't exist (for migration)
+    try:
+        cursor.execute("ALTER TABLE funnel ADD COLUMN strategy TEXT DEFAULT 'DEFAULT'")
+    except sqlite3.OperationalError:
+        pass # Column already exists
+
     conn.commit()
     conn.close()
 
-def update_funnel(session_id, status, last_message=""):
+def update_funnel(session_id, status, last_message="", strategy=""):
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     timestamp = datetime.now().isoformat()
 
-    # Upsert the session status
-    cursor.execute('''
-        INSERT INTO funnel (session_id, timestamp, status, last_message)
-        VALUES (?, ?, ?, ?)
-        ON CONFLICT(session_id) DO UPDATE SET
-            timestamp=excluded.timestamp,
-            status=excluded.status,
-            last_message=excluded.last_message
-    ''', (session_id, timestamp, status, last_message))
+    # If strategy is empty, we don't want to overwrite an existing strategy with empty string
+    if strategy:
+        cursor.execute('''
+            INSERT INTO funnel (session_id, timestamp, status, last_message, strategy)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(session_id) DO UPDATE SET
+                timestamp=excluded.timestamp,
+                status=excluded.status,
+                last_message=excluded.last_message,
+                strategy=excluded.strategy
+        ''', (session_id, timestamp, status, last_message, strategy))
+    else:
+        cursor.execute('''
+            INSERT INTO funnel (session_id, timestamp, status, last_message)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(session_id) DO UPDATE SET
+                timestamp=excluded.timestamp,
+                status=excluded.status,
+                last_message=excluded.last_message
+        ''', (session_id, timestamp, status, last_message))
 
     conn.commit()
     conn.close()
@@ -57,12 +75,12 @@ async def process_analytics():
             if channel == 'CUSTOMER_DETECTED':
                 # The detected payload has 'id' nested under 'metadata'
                 session_id = data.get('metadata', {}).get('id', 0)
-                await asyncio.to_thread(update_funnel, session_id, "APPROACHED")
-                print(f"[Analytics] Session {session_id} entered funnel: APPROACHED")
+                strategy = data.get('metadata', {}).get('strategy', 'DEFAULT')
+                await asyncio.to_thread(update_funnel, session_id, "APPROACHED", "", strategy)
+                print(f"[Analytics] Session {session_id} entered funnel: APPROACHED using {strategy}")
 
             elif channel == 'CUSTOMER_REPLY':
                 text = data.get('text', "")
-                # Simple heuristic: if we get a reply, they are engaged
                 await asyncio.to_thread(update_funnel, session_id, "ENGAGED", text)
                 print(f"[Analytics] Session {session_id} advanced funnel: ENGAGED")
 
@@ -74,7 +92,6 @@ async def process_analytics():
             elif channel == 'CUSTOMER_CONVERTED':
                 await asyncio.to_thread(update_funnel, session_id, "CONVERTED")
                 print(f"[Analytics] Session {session_id} advanced funnel: CONVERTED")
-                # When converted, we can emit a feedback metric to Redis for the LLM to pull
                 await r.incr("metric:total_conversions")
 
 if __name__ == "__main__":

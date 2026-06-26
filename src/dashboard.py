@@ -27,11 +27,17 @@ async def read_dashboard():
         cursor = conn.cursor()
         cursor.execute("SELECT status, COUNT(*) FROM funnel GROUP BY status")
         funnel_data = cursor.fetchall()
+
+        cursor.execute("SELECT strategy, COUNT(*) FROM funnel WHERE status='CONVERTED' GROUP BY strategy")
+        strategy_data = cursor.fetchall()
+
         conn.close()
     except Exception as e:
         funnel_data = [("Error connecting to DB", str(e))]
+        strategy_data = []
 
     funnel_html = "".join([f"<li>{status}: {count}</li>" for status, count in funnel_data])
+    strategy_html = "".join([f"<li>{strategy}: {count} conversions</li>" for strategy, count in strategy_data])
 
     # Fetch Inventory
     with open(INVENTORY_FILE, 'r') as f:
@@ -53,6 +59,10 @@ async def read_dashboard():
                 <h2>Conversion Funnel Metrics</h2>
                 <ul>
                     {funnel_html}
+                </ul>
+                <h3>A/B Testing Strategies (Conversions)</h3>
+                <ul>
+                    {strategy_html}
                 </ul>
             </div>
 

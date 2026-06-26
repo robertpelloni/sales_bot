@@ -6,3 +6,4 @@ openai
 pytest
 fastapi
 uvicorn
+httpx

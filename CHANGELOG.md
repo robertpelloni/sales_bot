@@ -1,4 +1,9 @@
 # CHANGELOG
+## [0.4.0] - A/B Testing Framework
+- Implemented A/B testing dynamically assigning Aggressive vs. Empathetic cold-open strategies.
+- Added strategy state-tracking into `analytics.db` funnel.
+- Updated Vendor Dashboard to reflect A/B strategy conversion metrics.
+
 ## [0.3.1] - Distance Calibration
 - Added strict distance calibration to `src/vision.py` using bounding box height metrics, requiring customers to be close to the kiosk to trigger.
 

@@ -3,6 +3,7 @@ import json
 import base64
 import time
 import asyncio
+import random
 import redis.asyncio as redis
 from collections import defaultdict
 from ultralytics import YOLO
@@ -66,10 +67,14 @@ async def process_video_stream(video_source=0):
                         _, buffer = cv2.imencode('.jpg', cropped_frame, [int(cv2.IMWRITE_JPEG_QUALITY), 70])
                         img_str = base64.b64encode(buffer).decode('utf-8')
 
+                        # Assign A/B Testing Strategy
+                        strategy = "A_AGGRESSIVE" if random.random() > 0.5 else "B_EMPATHETIC"
+
                         # Extract pseudo-metadata
                         metadata = {
                             "id": track_id,
-                            "attributes": ["a customer standing nearby"] # In real scenario, extract clothing colors etc.
+                            "attributes": ["a customer standing nearby"], # In real scenario, extract clothing colors etc.
+                            "strategy": strategy
                         }
 
                         payload = {
