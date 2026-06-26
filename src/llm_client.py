@@ -14,7 +14,7 @@ def load_modifiers():
 
 MODIFIERS = load_modifiers()
 
-async def get_dynamic_system_prompt(r, strategy="DEFAULT"):
+async def get_dynamic_system_prompt(r, strategy="DEFAULT", is_repeat=False):
     # Load dynamic inventory from POS Redis Cache, fallback to static if not ready
     live_inventory_bytes = await r.get("live_inventory")
     if live_inventory_bytes:
@@ -30,6 +30,10 @@ async def get_dynamic_system_prompt(r, strategy="DEFAULT"):
     elif strategy == "B_EMPATHETIC":
         ab_testing_instruction = "A/B TESTING INSTRUCTION: Use an EMPATHETIC approach. Focus heavily on storytelling, relating to the customer, and asking soft open-ended questions."
 
+    repeat_instruction = ""
+    if is_repeat:
+        repeat_instruction = "REPEAT CUSTOMER DETECTED: This is a returning customer. Acknowledge their return enthusiastically in your cold open (e.g., 'Welcome back!')."
+
     return f"""
 You are an elite, highly charismatic, and observant retail sales professional operating an interactive storefront kiosk.
 Your objective is to capture attention, build instant rapport, identify friction points, and close sales using advanced conversational framework strategies.
@@ -42,6 +46,7 @@ Tactics to enforce: {', '.join(MODIFIERS['tactics_enforced'])}
 Constraints: {', '.join(MODIFIERS['constraints'])}
 
 {ab_testing_instruction}
+{repeat_instruction}
 
 IMPORTANT: Match your greeting to the visual attributes provided in the user's message using a 'Pattern Interrupt Cold-Open'. Do not use generic store greetings.
 If the customer replies, match their pacing and use the Assumptive Close or Ben Franklin Close if they show friction over features or price.
@@ -122,9 +127,10 @@ async def handle_events():
                 metadata = data['metadata']
                 track_id = metadata['id']
                 strategy = metadata.get('strategy', 'DEFAULT')
+                is_repeat = metadata.get('is_repeat_customer', False)
                 image_b64 = data['image_b64']
 
-                print(f"[LLM Client] Received detection for ID {track_id} with strategy {strategy}")
+                print(f"[LLM Client] Received detection for ID {track_id} with strategy {strategy}, Repeat: {is_repeat}")
 
                 # Fetch history to ensure we don't cold-open someone we're already talking to
                 history = await fetch_session_history(r, track_id)
@@ -146,7 +152,7 @@ async def handle_events():
                     }
                 ]
 
-                sys_prompt = await get_dynamic_system_prompt(r, strategy)
+                sys_prompt = await get_dynamic_system_prompt(r, strategy, is_repeat)
                 messages = [
                     {"role": "system", "content": sys_prompt},
                     {"role": "user", "content": user_content}

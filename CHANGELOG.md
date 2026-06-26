@@ -1,4 +1,8 @@
 # CHANGELOG
+## [0.6.0] - Facial Embeddings for Repeat Customers
+- Implemented mocked facial embedding extraction in `src/vision.py` to identify repeat customers using a Redis cache.
+- Updated the LLM client to dynamically adjust its cold-open greeting if the customer is recognized as returning.
+
 ## [0.5.0] - Point-of-Sale Dynamic Pricing Integration
 - Created `src/pos_client.py` mock service to simulate real-time POS stock levels.
 - Updated LLM prompt compiler to fetch `live_inventory` and pass dynamic prices to the conversational model based on stock (scarcity premiums vs. fire sale discounts).

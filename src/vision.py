@@ -4,6 +4,7 @@ import base64
 import time
 import asyncio
 import random
+import numpy as np
 import redis.asyncio as redis
 from collections import defaultdict
 from ultralytics import YOLO
@@ -21,6 +22,43 @@ MIN_PROXIMITY_RATIO = 0.6  # Bounding box must occupy 60% of frame height
 TRACK_HISTORY = defaultdict(lambda: [])
 START_TIMES = {}
 
+try:
+    import face_recognition
+    FACE_REC_AVAILABLE = True
+except ImportError:
+    FACE_REC_AVAILABLE = False
+    print("[Vision] face_recognition library not found. Falling back to mocked embeddings.")
+
+class FaceEmbedding:
+    @staticmethod
+    def get_embedding(frame):
+        if FACE_REC_AVAILABLE:
+            # Convert BGR to RGB
+            rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            # Find face locations
+            face_locations = face_recognition.face_locations(rgb_frame)
+            if face_locations:
+                # Get the embedding for the first face found
+                encodings = face_recognition.face_encodings(rgb_frame, face_locations)
+                if encodings:
+                    return encodings[0].tolist()
+            return None
+        else:
+            # Return a mock 128D embedding vector for testing environments
+            return np.random.rand(128).tolist()
+
+    @staticmethod
+    def is_match(embed1, embed2, threshold=0.6):
+        if not embed1 or not embed2:
+            return False
+
+        if FACE_REC_AVAILABLE:
+            # face_recognition uses a slightly different distance calc natively but we can use np
+            dist = np.linalg.norm(np.array(embed1) - np.array(embed2))
+            return dist < threshold
+        else:
+            return False
+
 def capture_and_track(cap):
     success, frame = cap.read()
     if not success:
@@ -35,6 +73,40 @@ def get_gstreamer_pipeline():
         "video/x-raw, width=640, height=480, framerate=30/1 ! "
         "videoconvert ! appsink"
     )
+
+async def check_repeat_customer(embedding):
+    """
+    Checks the Redis cache of known customer embeddings asynchronously using batches.
+    If a match is found, returns True. Otherwise, saves the new embedding and returns False.
+    """
+    try:
+        if embedding is None:
+            return False
+
+        # Use SCAN to iterate without blocking redis, though keys is small usually.
+        cursor = b'0'
+        while cursor:
+            cursor, keys = await r.scan(cursor=cursor, match="customer_embed:*", count=100)
+
+            # Redis SCAN can return 0 keys with a valid cursor, only process if keys exist
+            if keys:
+                # Fetch batch of embeddings
+                stored_embed_strs = await r.mget(keys)
+
+                for stored_embed_str in stored_embed_strs:
+                    if stored_embed_str:
+                        stored_embed = json.loads(stored_embed_str.decode('utf-8'))
+                        if FaceEmbedding.is_match(embedding, stored_embed):
+                            return True
+
+        # No match found, save new customer securely with INCR to avoid race conditions
+        new_id = await r.incr("customer_id_counter")
+        # Set an expiration so the database doesn't grow unbounded in production (e.g. 7 days)
+        await r.set(f"customer_embed:{new_id}", json.dumps(embedding), ex=604800)
+        return False
+    except Exception as e:
+        print(f"[Vision] Error checking repeat customer: {e}")
+        return False
 
 async def process_video_stream(video_source=0):
     # Attempt hardware acceleration using GStreamer if a numeric ID is given
@@ -87,11 +159,16 @@ async def process_video_stream(video_source=0):
                         # Assign A/B Testing Strategy
                         strategy = "A_AGGRESSIVE" if random.random() > 0.5 else "B_EMPATHETIC"
 
+                        # Process Facial Embedding to check for Repeat Customer
+                        face_embedding = FaceEmbedding.get_embedding(cropped_frame)
+                        is_repeat = await check_repeat_customer(face_embedding)
+
                         # Extract pseudo-metadata
                         metadata = {
                             "id": track_id,
                             "attributes": ["a customer standing nearby"], # In real scenario, extract clothing colors etc.
-                            "strategy": strategy
+                            "strategy": strategy,
+                            "is_repeat_customer": is_repeat
                         }
 
                         payload = {
@@ -101,7 +178,7 @@ async def process_video_stream(video_source=0):
 
                         # Emit event
                         await r.publish('CUSTOMER_DETECTED', json.dumps(payload))
-                        print(f"Customer {track_id} locked. Triggering event.")
+                        print(f"Customer {track_id} locked. Triggering event. Repeat: {is_repeat}")
 
                         # Reset tracking to avoid spamming
                         START_TIMES[track_id] = current_time + 60 # Cooldown
