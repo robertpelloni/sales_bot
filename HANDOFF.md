@@ -1,4 +1,4 @@
 # HANDOFF
-- **Session Summary:** Implemented the FastAPI Vendor Dashboard (`src/dashboard.py`) for managing store inventory dynamically and viewing funnel analytics. Addressed `TODO.md` items by adding strict distance/proximity calibration to `src/vision.py` using bounding box height metrics (60% screen height threshold). Cleaned up tests and Redis initialization leaks. Merged into `main`.
-- **Current State:** The main branch is fully featured, integrating the vision loop, conversational LLM, audio input/output, funnel analytics, and a web dashboard.
-- **Next Steps:** Evaluate A/B testing capabilities, hardware-accelerated decoding support, or POS integration as suggested in `IDEAS.md`.
+- **Session Summary:** Addressed the A/B testing logic requested in `IDEAS.md`. The vision engine randomly assigns a strategy (A_AGGRESSIVE or B_EMPATHETIC) to detected customers. The LLM translates this strategy into specific constraints. The SQLite analytics tracks conversions based on the strategy, and the metrics are exposed via the FastAPI vendor dashboard.
+- **Current State:** The main branch is complete, featuring full hardware hooks, analytics, A/B testing, and local web dashboard integration. No regressions exist and test coverage holds up.
+- **Next Steps:** Hardware acceleration execution, POS system dynamic pricing tests.
