@@ -40,8 +40,17 @@ async def read_dashboard():
     strategy_html = "".join([f"<li>{strategy}: {count} conversions</li>" for strategy, count in strategy_data])
 
     # Fetch Inventory
-    with open(INVENTORY_FILE, 'r') as f:
-        inventory_data = json.load(f)
+    import redis
+    r = redis.Redis(host='localhost', port=6379, db=0)
+
+    live_inventory_bytes = r.get("live_inventory")
+    if live_inventory_bytes:
+        inventory_data = json.loads(live_inventory_bytes.decode('utf-8'))
+        source_label = "Live POS Cache"
+    else:
+        with open(INVENTORY_FILE, 'r') as f:
+            inventory_data = json.load(f)
+            source_label = "Static Config"
 
     html_content = f"""
     <html>
@@ -67,9 +76,9 @@ async def read_dashboard():
             </div>
 
             <div class="card">
-                <h2>Current Inventory (Store: {inventory_data['store_name']})</h2>
+                <h2>Current Inventory (Store: {inventory_data['store_name']}) - Source: {source_label}</h2>
                 <pre>{json.dumps(inventory_data['items'], indent=2)}</pre>
-                <p><i>Use the /api/inventory POST endpoint to update.</i></p>
+                <p><i>Use the /api/inventory POST endpoint to update the static config.</i></p>
             </div>
         </body>
     </html>

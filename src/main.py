@@ -6,6 +6,7 @@ from src.audio_output import process_audio_chunks
 from src.audio_input import process_audio_input
 from src.analytics import process_analytics
 from src.dashboard import serve_dashboard
+from src.pos_client import mock_pos_system
 
 async def main():
     print("Starting Project Sirens Orchestrator...")
@@ -20,7 +21,8 @@ async def main():
         process_audio_chunks(),
         process_audio_input(),
         process_analytics(),
-        serve_dashboard()
+        serve_dashboard(),
+        mock_pos_system()
     )
 
 if __name__ == "__main__":

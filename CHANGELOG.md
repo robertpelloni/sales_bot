@@ -1,4 +1,9 @@
 # CHANGELOG
+## [0.5.0] - Point-of-Sale Dynamic Pricing Integration
+- Created `src/pos_client.py` mock service to simulate real-time POS stock levels.
+- Updated LLM prompt compiler to fetch `live_inventory` and pass dynamic prices to the conversational model based on stock (scarcity premiums vs. fire sale discounts).
+- Updated Vendor Dashboard to reflect dynamic live prices instead of static base config files.
+
 ## [0.4.1] - Hardware Acceleration Optimization
 - Integrated GStreamer `libcamerasrc` pipeline for optimized Raspberry Pi 5 camera decoding, reducing CPU load and vision latency.
 

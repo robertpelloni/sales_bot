@@ -8,16 +8,21 @@ import redis.asyncio as redis
 # Init OpenAI client (Requires OPENAI_API_KEY environment variable)
 client = AsyncOpenAI(api_key=os.environ.get("OPENAI_API_KEY", "mock-key"))
 
-def load_config():
-    with open('config/inventory.json', 'r') as f:
-        inventory = json.load(f)
+def load_modifiers():
     with open('config/prompt_modifiers.json', 'r') as f:
-        modifiers = json.load(f)
-    return inventory, modifiers
+        return json.load(f)
 
-INVENTORY, MODIFIERS = load_config()
+MODIFIERS = load_modifiers()
 
 async def get_dynamic_system_prompt(r, strategy="DEFAULT"):
+    # Load dynamic inventory from POS Redis Cache, fallback to static if not ready
+    live_inventory_bytes = await r.get("live_inventory")
+    if live_inventory_bytes:
+        inventory = json.loads(live_inventory_bytes.decode('utf-8'))
+    else:
+        with open('config/inventory.json', 'r') as f:
+            inventory = json.load(f)
+
     # Convert strategy enum into specific instructions
     ab_testing_instruction = ""
     if strategy == "A_AGGRESSIVE":
@@ -29,9 +34,9 @@ async def get_dynamic_system_prompt(r, strategy="DEFAULT"):
 You are an elite, highly charismatic, and observant retail sales professional operating an interactive storefront kiosk.
 Your objective is to capture attention, build instant rapport, identify friction points, and close sales using advanced conversational framework strategies.
 
-Store Name: {INVENTORY['store_name']}
+Store Name: {inventory['store_name']}
 Inventory:
-{json.dumps(INVENTORY['items'], indent=2)}
+{json.dumps(inventory['items'], indent=2)}
 
 Tactics to enforce: {', '.join(MODIFIERS['tactics_enforced'])}
 Constraints: {', '.join(MODIFIERS['constraints'])}
