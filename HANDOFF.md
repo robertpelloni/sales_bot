@@ -1,4 +1,4 @@
 # HANDOFF
-- **Session Summary:** Integrated GStreamer `libcamerasrc` hardware-accelerated video decoding into `src/vision.py` to lower CPU utilization and computer vision latency on edge devices. Safely falls back to standard V4L2 webcams if hardware acceleration is unavailable. Merged to `main`.
-- **Current State:** The main branch is fully complete. Tracking, metrics, A/B logic, hardware acceleration, and the dashboard are all complete and merged.
-- **Next Steps:** POS Integration for dynamic pricing adjustments.
+- **Session Summary:** Integrated Point-of-Sale (POS) dynamic pricing. `pos_client.py` writes live inventory status to Redis. The VLM pulls this live feed and dynamically adjusts its sales pitches to offer fire-sale discounts or hype scarcity based on simulated stock levels. Vendor dashboard was updated to show live POS status. Merged to `main`.
+- **Current State:** The main branch is fully complete and extensively featured. Tracking, metrics, A/B logic, hardware acceleration, the dashboard, and POS dynamic pricing are all complete and merged.
+- **Next Steps:** General maintenance, facial embedding caching.
