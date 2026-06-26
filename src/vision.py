@@ -28,8 +28,25 @@ def capture_and_track(cap):
     results = model.track(frame, persist=True, classes=[0], conf=MIN_CONFIDENCE) # class 0 is person
     return True, frame, results
 
+def get_gstreamer_pipeline():
+    # Raspberry Pi specific hardware-accelerated libcamera pipeline
+    return (
+        "libcamerasrc ! "
+        "video/x-raw, width=640, height=480, framerate=30/1 ! "
+        "videoconvert ! appsink"
+    )
+
 async def process_video_stream(video_source=0):
-    cap = cv2.VideoCapture(video_source)
+    # Attempt hardware acceleration using GStreamer if a numeric ID is given
+    if isinstance(video_source, int):
+        cap = cv2.VideoCapture(get_gstreamer_pipeline(), cv2.CAP_GSTREAMER)
+        # Fallback to standard V4L2 if GStreamer fails (e.g. testing environments)
+        if not cap.isOpened():
+            print("[Vision] GStreamer failed. Falling back to standard V4L2 capture.")
+            cap = cv2.VideoCapture(video_source)
+    else:
+        # E.g. reading from a file or mock string
+        cap = cv2.VideoCapture(video_source)
 
     while cap.isOpened():
         success, frame, results = await asyncio.to_thread(capture_and_track, cap)

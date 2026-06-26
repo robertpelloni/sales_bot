@@ -1,4 +1,7 @@
 # CHANGELOG
+## [0.4.1] - Hardware Acceleration Optimization
+- Integrated GStreamer `libcamerasrc` pipeline for optimized Raspberry Pi 5 camera decoding, reducing CPU load and vision latency.
+
 ## [0.4.0] - A/B Testing Framework
 - Implemented A/B testing dynamically assigning Aggressive vs. Empathetic cold-open strategies.
 - Added strategy state-tracking into `analytics.db` funnel.
