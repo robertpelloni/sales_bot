@@ -1,3 +1,5 @@
+from src.logger import get_logger
+logger = get_logger(__name__)
 import asyncio
 import json
 import sqlite3
@@ -67,45 +69,50 @@ def update_funnel(session_id, node_id, status, last_message="", strategy=""):
 async def process_analytics():
     r = redis.Redis(host=os.environ.get('REDIS_HOST', 'localhost'), port=6379, db=0)
     init_db()
-    print("Analytics Microservice listening for funnel events across all nodes...")
+    logger.info("Analytics Microservice listening for funnel events across all nodes...")
 
-    pubsub = r.pubsub()
-    # Subscribe to all node events using psubscribe
-    await pubsub.psubscribe('CUSTOMER_DETECTED:*', 'CUSTOMER_REPLY:*', 'CUSTOMER_CONVERTED:*', 'CUSTOMER_OBJECTION:*')
+    try:
+        pubsub = r.pubsub()
+        # Subscribe to all node events using psubscribe
+        await pubsub.psubscribe('CUSTOMER_DETECTED:*', 'CUSTOMER_REPLY:*', 'CUSTOMER_CONVERTED:*', 'CUSTOMER_OBJECTION:*')
 
-    async for message in pubsub.listen():
-        if message['type'] == 'pmessage':
-            channel = message['channel'].decode('utf-8')
-            data = json.loads(message['data'].decode('utf-8'))
+        async for message in pubsub.listen():
+            if message['type'] == 'pmessage':
+                channel = message['channel'].decode('utf-8')
+                data = json.loads(message['data'].decode('utf-8'))
 
-            # Extract node_id and base channel
-            parts = channel.split(':')
-            base_channel = parts[0]
-            node_id = parts[1] if len(parts) > 1 else 'kiosk_default'
+                # Extract node_id and base channel
+                parts = channel.split(':')
+                base_channel = parts[0]
+                node_id = parts[1] if len(parts) > 1 else 'kiosk_default'
 
-            session_id = data.get('id', 0)
+                session_id = data.get('id', 0)
 
-            if base_channel == 'CUSTOMER_DETECTED':
-                # The detected payload has 'id' nested under 'metadata'
-                session_id = data.get('metadata', {}).get('id', 0)
-                strategy = data.get('metadata', {}).get('strategy', 'DEFAULT')
-                await asyncio.to_thread(update_funnel, session_id, node_id, "APPROACHED", "", strategy)
-                print(f"[Analytics] Session {session_id} on {node_id} entered funnel: APPROACHED using {strategy}")
+                if base_channel == 'CUSTOMER_DETECTED':
+                    # The detected payload has 'id' nested under 'metadata'
+                    session_id = data.get('metadata', {}).get('id', 0)
+                    strategy = data.get('metadata', {}).get('strategy', 'DEFAULT')
+                    await asyncio.to_thread(update_funnel, session_id, node_id, "APPROACHED", "", strategy)
+                    logger.info(f"[Analytics] Session {session_id} on {node_id} entered funnel: APPROACHED using {strategy}")
 
-            elif base_channel == 'CUSTOMER_REPLY':
-                text = data.get('text', "")
-                await asyncio.to_thread(update_funnel, session_id, node_id, "ENGAGED", text)
-                print(f"[Analytics] Session {session_id} on {node_id} advanced funnel: ENGAGED")
+                elif base_channel == 'CUSTOMER_REPLY':
+                    text = data.get('text', "")
+                    await asyncio.to_thread(update_funnel, session_id, node_id, "ENGAGED", text)
+                    logger.info(f"[Analytics] Session {session_id} on {node_id} advanced funnel: ENGAGED")
 
-            elif base_channel == 'CUSTOMER_OBJECTION':
-                text = data.get('text', "")
-                await asyncio.to_thread(update_funnel, session_id, node_id, "OBJECTION_RAISED", text)
-                print(f"[Analytics] Session {session_id} on {node_id} funnel state: OBJECTION_RAISED")
+                elif base_channel == 'CUSTOMER_OBJECTION':
+                    text = data.get('text', "")
+                    await asyncio.to_thread(update_funnel, session_id, node_id, "OBJECTION_RAISED", text)
+                    logger.info(f"[Analytics] Session {session_id} on {node_id} funnel state: OBJECTION_RAISED")
 
-            elif base_channel == 'CUSTOMER_CONVERTED':
-                await asyncio.to_thread(update_funnel, session_id, node_id, "CONVERTED")
-                print(f"[Analytics] Session {session_id} on {node_id} advanced funnel: CONVERTED")
-                await r.incr("metric:total_conversions")
+                elif base_channel == 'CUSTOMER_CONVERTED':
+                    await asyncio.to_thread(update_funnel, session_id, node_id, "CONVERTED")
+                    logger.info(f"[Analytics] Session {session_id} on {node_id} advanced funnel: CONVERTED")
+                    await r.incr("metric:total_conversions")
+    except asyncio.CancelledError:
+        logger.info("[Analytics] Cancelled analytics processor.")
+    finally:
+        await r.aclose()
 
 if __name__ == "__main__":
     asyncio.run(process_analytics())

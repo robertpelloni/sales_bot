@@ -1,4 +1,8 @@
 # CHANGELOG
+## [1.4.0] - Application Lifecycle & Logging Polish
+- Replaced raw print statements with the standardized Python `logging` module.
+- Overhauled the `src/main.py` orchestrator event loop to intercept `SIGINT`/`SIGTERM` termination signals to gracefully wind down concurrent microservices, safely closing SQLite/Redis database descriptors and releasing the `/dev/video0` hardware camera buffer correctly.
+
 ## [1.3.0] - Dashboard UI Polish
 - Refactored Vendor Dashboard UI to include `Chart.js` visual graphing for the conversion funnel and A/B strategy win-rates.
 - Replaced raw inventory JSON output with a styled CSS grid tracking live stock and dynamic pricing.

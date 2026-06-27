@@ -1,3 +1,5 @@
+from src.logger import get_logger
+logger = get_logger(__name__)
 import asyncio
 import json
 import os
@@ -112,82 +114,87 @@ async def handle_llm_stream(r, track_id, messages):
         return full_response.replace("CONVERSION_SUCCESS_TRIGGER", "")
 
     except Exception as e:
-        print(f"[LLM Client] Error generating response: {e}")
+        logger.info(f"[LLM Client] Error generating response: {e}")
         return ""
 
 async def handle_events():
     r = redis.Redis(host=os.environ.get('REDIS_HOST', 'localhost'), port=6379, db=0)
-    pubsub = r.pubsub()
-    await pubsub.subscribe(f'CUSTOMER_DETECTED:{NODE_ID}', f'CUSTOMER_REPLY:{NODE_ID}')
-    print(f"LLM Client listening for detections and replies on node {NODE_ID}...")
+    try:
+        pubsub = r.pubsub()
+        await pubsub.subscribe(f'CUSTOMER_DETECTED:{NODE_ID}', f'CUSTOMER_REPLY:{NODE_ID}')
+        logger.info(f"LLM Client listening for detections and replies on node {NODE_ID}...")
 
-    async for message in pubsub.listen():
-        if message['type'] == 'message':
-            channel = message['channel'].decode('utf-8')
-            data = json.loads(message['data'].decode('utf-8'))
+        async for message in pubsub.listen():
+            if message['type'] == 'message':
+                channel = message['channel'].decode('utf-8')
+                data = json.loads(message['data'].decode('utf-8'))
 
-            if channel.startswith('CUSTOMER_DETECTED'):
-                metadata = data['metadata']
-                track_id = metadata['id']
-                strategy = metadata.get('strategy', 'DEFAULT')
-                is_repeat = metadata.get('is_repeat_customer', False)
-                image_b64 = data['image_b64']
+                if channel.startswith('CUSTOMER_DETECTED'):
+                    metadata = data['metadata']
+                    track_id = metadata['id']
+                    strategy = metadata.get('strategy', 'DEFAULT')
+                    is_repeat = metadata.get('is_repeat_customer', False)
+                    image_b64 = data['image_b64']
 
-                print(f"[LLM Client] Received detection for ID {track_id} with strategy {strategy}, Repeat: {is_repeat}")
+                    logger.info(f"[LLM Client] Received detection for ID {track_id} with strategy {strategy}, Repeat: {is_repeat}")
 
-                # Fetch history to ensure we don't cold-open someone we're already talking to
-                history = await fetch_session_history(r, track_id)
-                if len(history) > 0:
-                    print(f"[LLM Client] ID {track_id} already has an active session. Ignoring re-trigger.")
-                    continue
+                    # Fetch history to ensure we don't cold-open someone we're already talking to
+                    history = await fetch_session_history(r, track_id)
+                    if len(history) > 0:
+                        logger.info(f"[LLM Client] ID {track_id} already has an active session. Ignoring re-trigger.")
+                        continue
 
-                # Construct user message with image and metadata for a Cold Open
-                user_content = [
-                    {
-                        "type": "text",
-                        "text": f"Customer detected with attributes: {', '.join(metadata['attributes'])}. Give a brief cold open pitch."
-                    },
-                    {
-                        "type": "image_url",
-                        "image_url": {
-                            "url": f"data:image/jpeg;base64,{image_b64}"
+                    # Construct user message with image and metadata for a Cold Open
+                    user_content = [
+                        {
+                            "type": "text",
+                            "text": f"Customer detected with attributes: {', '.join(metadata['attributes'])}. Give a brief cold open pitch."
+                        },
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/jpeg;base64,{image_b64}"
+                            }
                         }
-                    }
-                ]
+                    ]
 
-                sys_prompt = await get_dynamic_system_prompt(r, strategy, is_repeat)
-                messages = [
-                    {"role": "system", "content": sys_prompt},
-                    {"role": "user", "content": user_content}
-                ]
+                    sys_prompt = await get_dynamic_system_prompt(r, strategy, is_repeat)
+                    messages = [
+                        {"role": "system", "content": sys_prompt},
+                        {"role": "user", "content": user_content}
+                    ]
 
-                full_response = await handle_llm_stream(r, track_id, messages)
+                    full_response = await handle_llm_stream(r, track_id, messages)
 
-                # Save state
-                messages.append({"role": "assistant", "content": full_response})
-                await save_session_history(r, track_id, messages)
+                    # Save state
+                    messages.append({"role": "assistant", "content": full_response})
+                    await save_session_history(r, track_id, messages)
 
-            elif channel.startswith('CUSTOMER_REPLY'):
-                track_id = data['id']
-                customer_text = data['text']
+                elif channel.startswith('CUSTOMER_REPLY'):
+                    track_id = data['id']
+                    customer_text = data['text']
 
-                print(f"[LLM Client] Received reply from ID {track_id}: {customer_text}")
+                    logger.info(f"[LLM Client] Received reply from ID {track_id}: {customer_text}")
 
-                history = await fetch_session_history(r, track_id)
-                if not history:
-                    # Fallback if history expired but they replied
-                    sys_prompt = await get_dynamic_system_prompt(r)
-                    history = [{"role": "system", "content": sys_prompt}]
+                    history = await fetch_session_history(r, track_id)
+                    if not history:
+                        # Fallback if history expired but they replied
+                        sys_prompt = await get_dynamic_system_prompt(r)
+                        history = [{"role": "system", "content": sys_prompt}]
 
-                # Append customer reply
-                history.append({"role": "user", "content": customer_text})
+                    # Append customer reply
+                    history.append({"role": "user", "content": customer_text})
 
-                # Stream response
-                full_response = await handle_llm_stream(r, track_id, history)
+                    # Stream response
+                    full_response = await handle_llm_stream(r, track_id, history)
 
-                # Save state
-                history.append({"role": "assistant", "content": full_response})
-                await save_session_history(r, track_id, history)
+                    # Save state
+                    history.append({"role": "assistant", "content": full_response})
+                    await save_session_history(r, track_id, history)
+    except asyncio.CancelledError:
+        logger.info(f"[LLM Client] Cancelled for node {NODE_ID}.")
+    finally:
+        await r.aclose()
 
 if __name__ == "__main__":
     asyncio.run(handle_events())

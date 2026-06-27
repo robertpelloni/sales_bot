@@ -1,3 +1,5 @@
+from src.logger import get_logger
+logger = get_logger(__name__)
 import cv2
 import json
 import base64
@@ -30,7 +32,7 @@ try:
     FACE_REC_AVAILABLE = True
 except ImportError:
     FACE_REC_AVAILABLE = False
-    print("[Vision] face_recognition library not found. Falling back to mocked embeddings.")
+    logger.info("[Vision] face_recognition library not found. Falling back to mocked embeddings.")
 
 class FaceEmbedding:
     @staticmethod
@@ -113,7 +115,7 @@ async def check_repeat_customer(embedding):
         await r.set(f"customer_embed:{new_id}", json.dumps(embedding), ex=604800)
         return False
     except Exception as e:
-        print(f"[Vision] Error checking repeat customer: {e}")
+        logger.info(f"[Vision] Error checking repeat customer: {e}")
         return False
 
 async def process_video_stream(video_source=0):
@@ -122,7 +124,7 @@ async def process_video_stream(video_source=0):
         cap = cv2.VideoCapture(get_gstreamer_pipeline(), cv2.CAP_GSTREAMER)
         # Fallback to standard V4L2 if GStreamer fails (e.g. testing environments)
         if not cap.isOpened():
-            print("[Vision] GStreamer failed. Falling back to standard V4L2 capture.")
+            logger.info("[Vision] GStreamer failed. Falling back to standard V4L2 capture.")
             cap = cv2.VideoCapture(video_source)
     else:
         # E.g. reading from a file or mock string
@@ -132,13 +134,14 @@ async def process_video_stream(video_source=0):
     frame_count = 0
     PROCESS_EVERY_N_FRAMES = 3
 
-    while cap.isOpened():
-        frame_count += 1
-        process_this_frame = (frame_count % PROCESS_EVERY_N_FRAMES == 0)
+    try:
+        while cap.isOpened():
+            frame_count += 1
+            process_this_frame = (frame_count % PROCESS_EVERY_N_FRAMES == 0)
 
-        success, frame, results = await asyncio.to_thread(capture_and_track, cap, process_this_frame)
-        if not success:
-            break
+            success, frame, results = await asyncio.to_thread(capture_and_track, cap, process_this_frame)
+            if not success:
+                break
 
         if not process_this_frame or results is None:
             await asyncio.sleep(0.005)
@@ -198,12 +201,18 @@ async def process_video_stream(video_source=0):
 
                         # Emit event on NODE specific channel
                         await r.publish(f'CUSTOMER_DETECTED:{NODE_ID}', json.dumps(payload))
-                        print(f"Customer {track_id} locked. Triggering event on {NODE_ID}. Repeat: {is_repeat}")
+                        logger.info(f"Customer {track_id} locked. Triggering event on {NODE_ID}. Repeat: {is_repeat}")
 
                         # Reset tracking to avoid spamming
                         START_TIMES[track_id] = current_time + 60 # Cooldown
 
-        await asyncio.sleep(0.01) # Small sleep to avoid blocking
+            await asyncio.sleep(0.01) # Small sleep to avoid blocking
+    except asyncio.CancelledError:
+        logger.info("[Vision] Stream cancelled.")
+    finally:
+        logger.info("[Vision] Releasing camera hardware.")
+        cap.release()
+        cv2.destroyAllWindows()
 
 if __name__ == "__main__":
     asyncio.run(process_video_stream())

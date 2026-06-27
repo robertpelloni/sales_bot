@@ -1,3 +1,5 @@
+from src.logger import get_logger
+logger = get_logger(__name__)
 import json
 import sqlite3
 import uvicorn
@@ -217,7 +219,7 @@ async def update_inventory(inventory: InventoryUpdate):
 async def serve_dashboard():
     config = uvicorn.Config(app, host="0.0.0.0", port=8000, log_level="info")
     server = uvicorn.Server(config)
-    print("Starting Vendor Dashboard on port 8000...")
+    logger.info("Starting Vendor Dashboard on port 8000...")
     await server.serve()
 
 if __name__ == "__main__":
