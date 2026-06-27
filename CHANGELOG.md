@@ -1,4 +1,8 @@
 # CHANGELOG
+## [1.5.0] - Benchmarking & Integration Testing
+- Created `src/demo_benchmark.py` to allow users to easily test the pipeline without a physical camera and to measure core system TTFT (Time-To-First-Token) latency.
+- Updated `README.md` to include quickstart demo execution instructions.
+
 ## [1.4.0] - Application Lifecycle & Logging Polish
 - Replaced raw print statements with the standardized Python `logging` module.
 - Overhauled the `src/main.py` orchestrator event loop to intercept `SIGINT`/`SIGTERM` termination signals to gracefully wind down concurrent microservices, safely closing SQLite/Redis database descriptors and releasing the `/dev/video0` hardware camera buffer correctly.

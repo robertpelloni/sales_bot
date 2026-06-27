@@ -237,3 +237,18 @@ jules remote sync
 # Spin up the asynchronous task in a Google Cloud VM
 jules remote new --task "Build Project Sirens low-latency vision-sales platform" --file-scope src/,config/
 Jules will pull down the repo, spin up its sandbox, map out the system architecture, write the asynchronous pipeline code utilizing your submodules, and output a completed Pull Request for review.
+
+## Running the Benchmark / Demo
+To verify that the OpenAI LLM connection is functioning and to measure the core architectural latency (Time-To-First-Audio), you can run the benchmark script. This script mocks a camera detection payload and publishes it directly into the Redis pipeline.
+
+1. In Terminal 1, ensure Redis is running.
+2. In Terminal 2, start the core edge node services (requires `OPENAI_API_KEY`):
+   ```bash
+   NODE_ID=kiosk_benchmark python3 -m src.main --mode edge
+   ```
+3. In Terminal 3, run the benchmark simulation:
+   ```bash
+   NODE_ID=kiosk_benchmark python3 -m src.demo_benchmark
+   ```
+
+The benchmark will output the time (in milliseconds) it took for the system to process the detection, query the frontier model, and generate the first speakable sentence chunk.
