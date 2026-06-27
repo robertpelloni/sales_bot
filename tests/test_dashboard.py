@@ -10,7 +10,7 @@ class TestDashboard(unittest.TestCase):
     def test_read_dashboard(self):
         response = self.client.get("/")
         self.assertEqual(response.status_code, 200)
-        self.assertIn("Project Sirens - Vendor Dashboard", response.text)
+        self.assertIn("Project Sirens Central Hub", response.text)
 
     def test_get_inventory(self):
         response = self.client.get("/api/inventory")

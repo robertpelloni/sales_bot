@@ -1,4 +1,8 @@
 # CHANGELOG
+## [1.3.0] - Dashboard UI Polish
+- Refactored Vendor Dashboard UI to include `Chart.js` visual graphing for the conversion funnel and A/B strategy win-rates.
+- Replaced raw inventory JSON output with a styled CSS grid tracking live stock and dynamic pricing.
+
 ## [1.2.0] - Latency Optimization & Deployment Architecture Update
 - Refactored `docker-compose.yml` to define isolated `hub` and `edge/kiosk` services using `argparse` modes in `src/main.py` for decoupled deployment logic.
 - Implemented frame skipping inside the `vision.py` tracking loop (processing every 3rd frame) significantly reducing CPU/GPU overhead.
