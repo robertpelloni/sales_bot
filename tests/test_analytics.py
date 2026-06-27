@@ -1,3 +1,4 @@
+import os
 import asyncio
 import json
 import sqlite3
@@ -8,7 +9,7 @@ from src.analytics import process_analytics, DB_FILE
 class TestAnalytics(unittest.IsolatedAsyncioTestCase):
 
     async def asyncSetUp(self):
-        self.redis = redis.Redis(host='localhost', port=6379, db=0)
+        self.redis = redis.Redis(host=os.environ.get('REDIS_HOST', 'localhost'), port=6379, db=0)
         # Clear DB table
         conn = sqlite3.connect(DB_FILE)
         cursor = conn.cursor()

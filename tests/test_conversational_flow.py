@@ -1,3 +1,4 @@
+import os
 import asyncio
 import json
 import base64
@@ -10,7 +11,7 @@ from src.audio_output import process_audio_chunks
 class TestConversationalFlow(unittest.IsolatedAsyncioTestCase):
 
     async def asyncSetUp(self):
-        self.redis = redis.Redis(host='localhost', port=6379, db=0)
+        self.redis = redis.Redis(host=os.environ.get('REDIS_HOST', 'localhost'), port=6379, db=0)
 
     async def asyncTearDown(self):
         # Clean up keys created during tests

@@ -1,3 +1,4 @@
+import os
 import cv2
 import json
 import base64
@@ -10,7 +11,7 @@ from collections import defaultdict
 from ultralytics import YOLO
 
 # Connect to Redis
-r = redis.Redis(host='localhost', port=6379, db=0)
+r = redis.Redis(host=os.environ.get('REDIS_HOST', 'localhost'), port=6379, db=0)
 
 # Load YOLO model
 model = YOLO('yolov11n.pt')

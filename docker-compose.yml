@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:alpine
+    container_name: sirens_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: always
+
+  sales_bot:
+    build: .
+    container_name: sirens_agent
+    depends_on:
+      - redis
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - REDIS_HOST=redis
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./config:/app/config
+      - ./data:/app/data
+    devices:
+      - "/dev/video0:/dev/video0" # Pass through primary webcam
+    restart: always
+    command: ["python", "-m", "src.main"]
+
+volumes:
+  redis_data:

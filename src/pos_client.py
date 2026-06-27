@@ -1,9 +1,10 @@
+import os
 import asyncio
 import json
 import random
 import redis.asyncio as redis
 
-r = redis.Redis(host='localhost', port=6379, db=0)
+r = redis.Redis(host=os.environ.get('REDIS_HOST', 'localhost'), port=6379, db=0)
 
 INVENTORY_FILE = "config/inventory.json"
 

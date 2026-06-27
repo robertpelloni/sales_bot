@@ -3,7 +3,7 @@ import redis.asyncio as redis
 import subprocess
 import os
 
-r = redis.Redis(host='localhost', port=6379, db=0)
+r = redis.Redis(host=os.environ.get('REDIS_HOST', 'localhost'), port=6379, db=0)
 
 async def process_audio_chunks():
     pubsub = r.pubsub()

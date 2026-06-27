@@ -1,3 +1,4 @@
+import os
 import json
 import sqlite3
 import uvicorn
@@ -7,7 +8,7 @@ from pydantic import BaseModel
 from typing import List
 
 app = FastAPI(title="Project Sirens Vendor Dashboard")
-DB_FILE = "analytics.db"
+DB_FILE = "data/analytics.db"
 INVENTORY_FILE = "config/inventory.json"
 
 class InventoryItem(BaseModel):
@@ -41,7 +42,7 @@ async def read_dashboard():
 
     # Fetch Inventory
     import redis
-    r = redis.Redis(host='localhost', port=6379, db=0)
+    r = redis.Redis(host=os.environ.get('REDIS_HOST', 'localhost'), port=6379, db=0)
 
     live_inventory_bytes = r.get("live_inventory")
     if live_inventory_bytes:

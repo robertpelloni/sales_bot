@@ -1,8 +1,9 @@
+import os
 import asyncio
 import json
 import redis.asyncio as redis
 
-r = redis.Redis(host='localhost', port=6379, db=0)
+r = redis.Redis(host=os.environ.get('REDIS_HOST', 'localhost'), port=6379, db=0)
 
 async def process_audio_input():
     print("Starting STT Mock Audio Input service...")

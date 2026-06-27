@@ -113,7 +113,7 @@ async def handle_llm_stream(r, track_id, messages):
         return ""
 
 async def handle_events():
-    r = redis.Redis(host='localhost', port=6379, db=0)
+    r = redis.Redis(host=os.environ.get('REDIS_HOST', 'localhost'), port=6379, db=0)
     pubsub = r.pubsub()
     await pubsub.subscribe('CUSTOMER_DETECTED', 'CUSTOMER_REPLY')
     print("LLM Client listening for detections and replies...")

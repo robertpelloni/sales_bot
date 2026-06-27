@@ -1,4 +1,9 @@
 # CHANGELOG
+## [1.0.0] - Release Candidate & Containerization
+- Fully containerized the edge-cloud pipeline using `Docker` and `docker-compose`.
+- Bound container hardware interfaces to support Raspberry Pi camera passthrough.
+- Updated `DEPLOY.md` with explicit orchestration instructions.
+
 ## [0.6.0] - Facial Embeddings for Repeat Customers
 - Implemented mocked facial embedding extraction in `src/vision.py` to identify repeat customers using a Redis cache.
 - Updated the LLM client to dynamically adjust its cold-open greeting if the customer is recognized as returning.

@@ -1,3 +1,4 @@
+import os
 import asyncio
 import json
 import unittest
@@ -7,7 +8,7 @@ from src.pos_client import mock_pos_system
 class TestPOSClient(unittest.IsolatedAsyncioTestCase):
 
     async def asyncSetUp(self):
-        self.redis = redis.Redis(host='localhost', port=6379, db=0)
+        self.redis = redis.Redis(host=os.environ.get('REDIS_HOST', 'localhost'), port=6379, db=0)
 
     async def asyncTearDown(self):
         await self.redis.delete("live_inventory")
