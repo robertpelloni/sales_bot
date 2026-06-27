@@ -1,4 +1,4 @@
 # HANDOFF
-- **Session Summary:** Overhauled the application lifecycle logic to ensure production readiness. Replaced all raw print statements with standard Python `logging`. Updated the `src/main.py` asyncio loop to intercept OS termination signals, gracefully closing all Redis Pub/Sub listeners, SQLite database handlers, and explicitly releasing the `/dev/video0` hardware camera interfaces to prevent resource leakage on Docker shutdown.
-- **Current State:** Version 1.4.0 completed. The system is extremely robust and scalable.
-- **Next Steps:** Evaluate any further logic requirements or finalize the project.
+- **Session Summary:** Completed performance profiling phase. Built `src/demo_benchmark.py` to allow execution of the pure API routing stream without a webcam attached, enabling raw pipeline testing and metrics. Updated `README.md` to reflect the benchmark.
+- **Current State:** Version 1.5.0 completed. Project Sirens core pipeline is 100% verified.
+- **Next Steps:** Exhaustive edge-case review and creation of the final deployment plan.
