@@ -1,4 +1,3 @@
-import os
 import cv2
 import json
 import base64
@@ -7,11 +6,14 @@ import asyncio
 import random
 import numpy as np
 import redis.asyncio as redis
+import os
 from collections import defaultdict
 from ultralytics import YOLO
 
 # Connect to Redis
 r = redis.Redis(host=os.environ.get('REDIS_HOST', 'localhost'), port=6379, db=0)
+
+NODE_ID = os.environ.get('NODE_ID', 'kiosk_default')
 
 # Load YOLO model
 model = YOLO('yolov11n.pt')
@@ -169,7 +171,8 @@ async def process_video_stream(video_source=0):
                             "id": track_id,
                             "attributes": ["a customer standing nearby"], # In real scenario, extract clothing colors etc.
                             "strategy": strategy,
-                            "is_repeat_customer": is_repeat
+                            "is_repeat_customer": is_repeat,
+                            "node_id": NODE_ID
                         }
 
                         payload = {
@@ -177,9 +180,9 @@ async def process_video_stream(video_source=0):
                             "image_b64": img_str
                         }
 
-                        # Emit event
-                        await r.publish('CUSTOMER_DETECTED', json.dumps(payload))
-                        print(f"Customer {track_id} locked. Triggering event. Repeat: {is_repeat}")
+                        # Emit event on NODE specific channel
+                        await r.publish(f'CUSTOMER_DETECTED:{NODE_ID}', json.dumps(payload))
+                        print(f"Customer {track_id} locked. Triggering event on {NODE_ID}. Repeat: {is_repeat}")
 
                         # Reset tracking to avoid spamming
                         START_TIMES[track_id] = current_time + 60 # Cooldown

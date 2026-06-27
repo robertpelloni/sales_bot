@@ -72,7 +72,7 @@ class TestConversationalFlow(unittest.IsolatedAsyncioTestCase):
 
         # Subscribe to audio to verify output
         pubsub = self.redis.pubsub()
-        await pubsub.subscribe('AUDIO_CHUNK_READY')
+        await pubsub.subscribe('AUDIO_CHUNK_READY:kiosk_default')
 
         # 1. Publish mock detection (Cold Open)
         mock_img = base64.b64encode(b"mock_image_data").decode('utf-8')
@@ -80,7 +80,7 @@ class TestConversationalFlow(unittest.IsolatedAsyncioTestCase):
             "metadata": {"id": 999, "attributes": ["mock test attributes"]},
             "image_b64": mock_img
         }
-        await self.redis.publish('CUSTOMER_DETECTED', json.dumps(payload))
+        await self.redis.publish('CUSTOMER_DETECTED:kiosk_default', json.dumps(payload))
 
         # Wait for processing
         await asyncio.sleep(0.5)
@@ -100,7 +100,7 @@ class TestConversationalFlow(unittest.IsolatedAsyncioTestCase):
         self.assertIn("Cold open pitch.", received_chunks)
 
         # Verify session state
-        history = await self.redis.get("session:999")
+        history = await self.redis.get("session:kiosk_default:999")
         self.assertIsNotNone(history)
         history_list = json.loads(history.decode('utf-8'))
         self.assertEqual(len(history_list), 3) # System, User (image), Assistant
@@ -110,7 +110,7 @@ class TestConversationalFlow(unittest.IsolatedAsyncioTestCase):
             "id": 999,
             "text": "I don't know, it looks expensive."
         }
-        await self.redis.publish('CUSTOMER_REPLY', json.dumps(reply_payload))
+        await self.redis.publish('CUSTOMER_REPLY:kiosk_default', json.dumps(reply_payload))
 
         await asyncio.sleep(0.5)
 
@@ -126,7 +126,7 @@ class TestConversationalFlow(unittest.IsolatedAsyncioTestCase):
         self.assertIn("Handling the objection.", received_chunks)
 
         # Verify updated session state
-        history = await self.redis.get("session:999")
+        history = await self.redis.get("session:kiosk_default:999")
         history_list = json.loads(history.decode('utf-8'))
         self.assertEqual(len(history_list), 5) # System, User, Assistant, User (reply), Assistant (objection)
 

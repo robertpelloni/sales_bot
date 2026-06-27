@@ -18,6 +18,7 @@ services:
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - REDIS_HOST=redis
+      - NODE_ID=kiosk_front_door
     ports:
       - "8000:8000"
     volumes:

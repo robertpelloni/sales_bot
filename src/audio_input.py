@@ -1,12 +1,14 @@
-import os
 import asyncio
 import json
+import os
 import redis.asyncio as redis
 
 r = redis.Redis(host=os.environ.get('REDIS_HOST', 'localhost'), port=6379, db=0)
 
+NODE_ID = os.environ.get('NODE_ID', 'kiosk_default')
+
 async def process_audio_input():
-    print("Starting STT Mock Audio Input service...")
+    print(f"Starting STT Mock Audio Input service on node {NODE_ID}...")
 
     # In a real environment, this loop would continuously stream from a microphone,
     # run inference on a local STT model like Whisper, and parse voice input.
@@ -15,7 +17,7 @@ async def process_audio_input():
 
     # For now, it will simply listen to a debug testing channel and route it to the LLM
     pubsub = r.pubsub()
-    await pubsub.subscribe('DEBUG_MOCK_VOICE_INPUT')
+    await pubsub.subscribe(f'DEBUG_MOCK_VOICE_INPUT:{NODE_ID}')
 
     async for message in pubsub.listen():
         if message['type'] == 'message':
@@ -27,10 +29,11 @@ async def process_audio_input():
 
             payload = {
                 "id": track_id,
-                "text": text
+                "text": text,
+                "node_id": NODE_ID
             }
 
-            await r.publish('CUSTOMER_REPLY', json.dumps(payload))
+            await r.publish(f'CUSTOMER_REPLY:{NODE_ID}', json.dumps(payload))
 
 if __name__ == "__main__":
     asyncio.run(process_audio_input())

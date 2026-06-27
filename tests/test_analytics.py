@@ -13,7 +13,17 @@ class TestAnalytics(unittest.IsolatedAsyncioTestCase):
         # Clear DB table
         conn = sqlite3.connect(DB_FILE)
         cursor = conn.cursor()
-        cursor.execute("CREATE TABLE IF NOT EXISTS funnel (session_id INTEGER PRIMARY KEY, timestamp TEXT, status TEXT, last_message TEXT)")
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS funnel (
+                session_id INTEGER,
+                node_id TEXT,
+                timestamp TEXT,
+                status TEXT,
+                last_message TEXT,
+                strategy TEXT,
+                PRIMARY KEY (session_id, node_id)
+            )
+        ''')
         cursor.execute("DELETE FROM funnel")
         conn.commit()
         conn.close()
@@ -32,7 +42,7 @@ class TestAnalytics(unittest.IsolatedAsyncioTestCase):
             "metadata": {"id": 100, "attributes": ["mock test attributes"]},
             "image_b64": "mock_img"
         }
-        await self.redis.publish('CUSTOMER_DETECTED', json.dumps(payload))
+        await self.redis.publish('CUSTOMER_DETECTED:kiosk_default', json.dumps(payload))
         await asyncio.sleep(0.1)
 
         conn = sqlite3.connect(DB_FILE)
@@ -42,7 +52,7 @@ class TestAnalytics(unittest.IsolatedAsyncioTestCase):
         conn.close()
 
         # 2. Convert
-        await self.redis.publish('CUSTOMER_CONVERTED', json.dumps({"id": 100}))
+        await self.redis.publish('CUSTOMER_CONVERTED:kiosk_default', json.dumps({"id": 100}))
         await asyncio.sleep(0.1)
 
         conn = sqlite3.connect(DB_FILE)

@@ -8,6 +8,8 @@ import redis.asyncio as redis
 # Init OpenAI client (Requires OPENAI_API_KEY environment variable)
 client = AsyncOpenAI(api_key=os.environ.get("OPENAI_API_KEY", "mock-key"))
 
+NODE_ID = os.environ.get('NODE_ID', 'kiosk_default')
+
 def load_modifiers():
     with open('config/prompt_modifiers.json', 'r') as f:
         return json.load(f)
@@ -54,14 +56,14 @@ If the customer shows direct intent to purchase or agrees to buy, explicitly sta
 """
 
 async def fetch_session_history(r, track_id):
-    history_json = await r.get(f"session:{track_id}")
+    history_json = await r.get(f"session:{NODE_ID}:{track_id}")
     if history_json:
         return json.loads(history_json.decode('utf-8'))
     return []
 
 async def save_session_history(r, track_id, history):
     # Set an expiration of 5 minutes for session history
-    await r.set(f"session:{track_id}", json.dumps(history), ex=300)
+    await r.set(f"session:{NODE_ID}:{track_id}", json.dumps(history), ex=300)
 
 async def handle_llm_stream(r, track_id, messages):
     try:
@@ -89,22 +91,23 @@ async def handle_llm_stream(r, track_id, messages):
                     buffer = buffer[split_index:].lstrip()
                     safe_sentence = sentence.replace("CONVERSION_SUCCESS_TRIGGER", "").strip()
                     if safe_sentence:
-                        await r.publish('AUDIO_CHUNK_READY', safe_sentence)
+                        await r.publish(f'AUDIO_CHUNK_READY:{NODE_ID}', safe_sentence)
                 elif buffer.endswith(('.', '!', '?')):
                     safe_sentence = buffer.strip().replace("CONVERSION_SUCCESS_TRIGGER", "").strip()
                     if safe_sentence:
-                        await r.publish('AUDIO_CHUNK_READY', safe_sentence)
+                        await r.publish(f'AUDIO_CHUNK_READY:{NODE_ID}', safe_sentence)
                     buffer = ""
 
         # Flush remaining buffer
         if buffer.strip():
             safe_sentence = buffer.strip().replace("CONVERSION_SUCCESS_TRIGGER", "").strip()
             if safe_sentence:
-                await r.publish('AUDIO_CHUNK_READY', safe_sentence)
+                await r.publish(f'AUDIO_CHUNK_READY:{NODE_ID}', safe_sentence)
 
         if "CONVERSION_SUCCESS_TRIGGER" in full_response:
             # Emit success to analytics and trim the trigger from TTS output if missed
-            await r.publish('CUSTOMER_CONVERTED', json.dumps({"id": track_id}))
+            # Send node_id for metrics
+            await r.publish(f'CUSTOMER_CONVERTED:{NODE_ID}', json.dumps({"id": track_id, "node_id": NODE_ID}))
 
         return full_response.replace("CONVERSION_SUCCESS_TRIGGER", "")
 
@@ -115,15 +118,15 @@ async def handle_llm_stream(r, track_id, messages):
 async def handle_events():
     r = redis.Redis(host=os.environ.get('REDIS_HOST', 'localhost'), port=6379, db=0)
     pubsub = r.pubsub()
-    await pubsub.subscribe('CUSTOMER_DETECTED', 'CUSTOMER_REPLY')
-    print("LLM Client listening for detections and replies...")
+    await pubsub.subscribe(f'CUSTOMER_DETECTED:{NODE_ID}', f'CUSTOMER_REPLY:{NODE_ID}')
+    print(f"LLM Client listening for detections and replies on node {NODE_ID}...")
 
     async for message in pubsub.listen():
         if message['type'] == 'message':
             channel = message['channel'].decode('utf-8')
             data = json.loads(message['data'].decode('utf-8'))
 
-            if channel == 'CUSTOMER_DETECTED':
+            if channel.startswith('CUSTOMER_DETECTED'):
                 metadata = data['metadata']
                 track_id = metadata['id']
                 strategy = metadata.get('strategy', 'DEFAULT')
@@ -164,7 +167,7 @@ async def handle_events():
                 messages.append({"role": "assistant", "content": full_response})
                 await save_session_history(r, track_id, messages)
 
-            elif channel == 'CUSTOMER_REPLY':
+            elif channel.startswith('CUSTOMER_REPLY'):
                 track_id = data['id']
                 customer_text = data['text']
 

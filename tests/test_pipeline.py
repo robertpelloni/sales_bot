@@ -58,7 +58,7 @@ class TestPipeline(unittest.IsolatedAsyncioTestCase):
 
         # Subscribe to audio to verify output
         pubsub = self.redis.pubsub()
-        await pubsub.subscribe('AUDIO_CHUNK_READY')
+        await pubsub.subscribe('AUDIO_CHUNK_READY:kiosk_default')
 
         # Publish mock detection
         mock_img = base64.b64encode(b"mock_image_data").decode('utf-8')
@@ -66,7 +66,7 @@ class TestPipeline(unittest.IsolatedAsyncioTestCase):
             "metadata": {"id": 1, "attributes": ["mock test attributes"]},
             "image_b64": mock_img
         }
-        await self.redis.publish('CUSTOMER_DETECTED', json.dumps(payload))
+        await self.redis.publish('CUSTOMER_DETECTED:kiosk_default', json.dumps(payload))
 
         # Wait for processing
         await asyncio.sleep(0.5)

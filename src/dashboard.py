@@ -1,7 +1,7 @@
-import os
 import json
 import sqlite3
 import uvicorn
+import os
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
@@ -26,19 +26,28 @@ async def read_dashboard():
     try:
         conn = sqlite3.connect(DB_FILE)
         cursor = conn.cursor()
+
+        # Overall funnel stats
         cursor.execute("SELECT status, COUNT(*) FROM funnel GROUP BY status")
         funnel_data = cursor.fetchall()
 
+        # Strategy A/B testing stats
         cursor.execute("SELECT strategy, COUNT(*) FROM funnel WHERE status='CONVERTED' GROUP BY strategy")
         strategy_data = cursor.fetchall()
+
+        # Node performance stats
+        cursor.execute("SELECT node_id, COUNT(*) FROM funnel WHERE status='CONVERTED' GROUP BY node_id")
+        node_data = cursor.fetchall()
 
         conn.close()
     except Exception as e:
         funnel_data = [("Error connecting to DB", str(e))]
         strategy_data = []
+        node_data = []
 
     funnel_html = "".join([f"<li>{status}: {count}</li>" for status, count in funnel_data])
     strategy_html = "".join([f"<li>{strategy}: {count} conversions</li>" for strategy, count in strategy_data])
+    node_html = "".join([f"<li>{node}: {count} conversions</li>" for node, count in node_data])
 
     # Fetch Inventory
     import redis
@@ -63,7 +72,7 @@ async def read_dashboard():
             </style>
         </head>
         <body>
-            <h1>Project Sirens - Vendor Dashboard</h1>
+            <h1>Project Sirens - Vendor Dashboard (Central Hub)</h1>
 
             <div class="card">
                 <h2>Conversion Funnel Metrics</h2>
@@ -73,6 +82,10 @@ async def read_dashboard():
                 <h3>A/B Testing Strategies (Conversions)</h3>
                 <ul>
                     {strategy_html}
+                </ul>
+                <h3>Node Performance (Conversions)</h3>
+                <ul>
+                    {node_html}
                 </ul>
             </div>
 

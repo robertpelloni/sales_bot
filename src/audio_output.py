@@ -5,10 +5,12 @@ import os
 
 r = redis.Redis(host=os.environ.get('REDIS_HOST', 'localhost'), port=6379, db=0)
 
+NODE_ID = os.environ.get('NODE_ID', 'kiosk_default')
+
 async def process_audio_chunks():
     pubsub = r.pubsub()
-    await pubsub.subscribe('AUDIO_CHUNK_READY')
-    print("Listening for audio chunks...")
+    await pubsub.subscribe(f'AUDIO_CHUNK_READY:{NODE_ID}')
+    print(f"Listening for audio chunks on node {NODE_ID}...")
 
     PIPER_EXEC = "vendor/piper/piper"
     MODEL = "en_US-lessac-medium.onnx"

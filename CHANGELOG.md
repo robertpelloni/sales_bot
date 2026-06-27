@@ -1,4 +1,9 @@
 # CHANGELOG
+## [1.1.0] - Multi-Node Scaling Architecture
+- Implemented `NODE_ID` architecture across all microservices, allowing multiple kiosks to share a single centralized POS/Analytics database.
+- Refactored Redis `pub/sub` streams to be node-specific (e.g. `CUSTOMER_DETECTED:<NODE_ID>`) preventing crosstalk.
+- Updated Dashboard UI and Analytics to aggregate metrics across multiple nodes concurrently.
+
 ## [1.0.0] - Release Candidate & Containerization
 - Fully containerized the edge-cloud pipeline using `Docker` and `docker-compose`.
 - Bound container hardware interfaces to support Raspberry Pi camera passthrough.
