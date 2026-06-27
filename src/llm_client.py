@@ -71,7 +71,7 @@ async def handle_llm_stream(r, track_id, messages):
             model="gpt-4o-mini",
             messages=messages,
             stream=True,
-            max_tokens=150
+            max_tokens=50 # Optimized for extremely low-latency initial TTS response
         )
 
         buffer = ""

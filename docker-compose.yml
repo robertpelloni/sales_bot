@@ -10,24 +10,52 @@ services:
       - redis_data:/data
     restart: always
 
-  sales_bot:
+  hub:
     build: .
-    container_name: sirens_agent
+    container_name: sirens_hub
     depends_on:
       - redis
     environment:
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
       - REDIS_HOST=redis
-      - NODE_ID=kiosk_front_door
     ports:
       - "8000:8000"
     volumes:
       - ./config:/app/config
       - ./data:/app/data
-    devices:
-      - "/dev/video0:/dev/video0" # Pass through primary webcam
     restart: always
-    command: ["python", "-m", "src.main"]
+    command: ["python", "-m", "src.main", "--mode", "hub"]
+
+  kiosk_1:
+    build: .
+    container_name: sirens_kiosk_1
+    depends_on:
+      - redis
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - REDIS_HOST=redis
+      - NODE_ID=kiosk_1
+    volumes:
+      - ./config:/app/config
+    devices:
+      - "/dev/video0:/dev/video0" # Update based on host system
+    restart: always
+    command: ["python", "-m", "src.main", "--mode", "edge"]
+
+  kiosk_2:
+    build: .
+    container_name: sirens_kiosk_2
+    depends_on:
+      - redis
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - REDIS_HOST=redis
+      - NODE_ID=kiosk_2
+    volumes:
+      - ./config:/app/config
+    devices:
+      - "/dev/video2:/dev/video0" # Example secondary camera on host
+    restart: always
+    command: ["python", "-m", "src.main", "--mode", "edge"]
 
 volumes:
   redis_data:

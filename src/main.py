@@ -9,22 +9,36 @@ from src.analytics import process_analytics
 from src.dashboard import serve_dashboard
 from src.pos_client import mock_pos_system
 
+import argparse
+
 async def main():
-    print("Starting Project Sirens Orchestrator...")
+    parser = argparse.ArgumentParser(description="Project Sirens Orchestrator")
+    parser.add_argument("--mode", type=str, default="all", choices=["all", "hub", "edge"], help="Operating mode of the node")
+    parser.add_argument("--video_source", type=str, default="0", help="Video source (index or path)")
+    args = parser.parse_args()
 
-    # Check if a video source is provided, otherwise use default webcam (0)
-    video_source = int(sys.argv[1]) if len(sys.argv) > 1 and sys.argv[1].isdigit() else sys.argv[1] if len(sys.argv) > 1 else 0
+    print(f"Starting Project Sirens Orchestrator in {args.mode.upper()} mode...")
 
-    # Run all tasks concurrently
-    await asyncio.gather(
-        process_video_stream(video_source=video_source),
-        handle_events(),
-        process_audio_chunks(),
-        process_audio_input(),
-        process_analytics(),
-        serve_dashboard(),
-        mock_pos_system()
-    )
+    video_source = int(args.video_source) if args.video_source.isdigit() else args.video_source
+
+    tasks = []
+
+    if args.mode in ["all", "edge"]:
+        tasks.extend([
+            process_video_stream(video_source=video_source),
+            handle_events(),
+            process_audio_chunks(),
+            process_audio_input()
+        ])
+
+    if args.mode in ["all", "hub"]:
+        tasks.extend([
+            process_analytics(),
+            serve_dashboard(),
+            mock_pos_system()
+        ])
+
+    await asyncio.gather(*tasks)
 
 if __name__ == "__main__":
     try:

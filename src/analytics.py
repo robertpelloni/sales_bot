@@ -65,6 +65,7 @@ def update_funnel(session_id, node_id, status, last_message="", strategy=""):
     conn.close()
 
 async def process_analytics():
+    r = redis.Redis(host=os.environ.get('REDIS_HOST', 'localhost'), port=6379, db=0)
     init_db()
     print("Analytics Microservice listening for funnel events across all nodes...")
 

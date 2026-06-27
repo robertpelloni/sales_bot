@@ -62,11 +62,16 @@ class FaceEmbedding:
         else:
             return False
 
-def capture_and_track(cap):
+def capture_and_track(cap, process_frame=True):
     success, frame = cap.read()
     if not success:
         return False, None, None
-    results = model.track(frame, persist=True, classes=[0], conf=MIN_CONFIDENCE) # class 0 is person
+
+    results = None
+    if process_frame:
+        # Only run YOLO tracking on designated frames to save CPU
+        results = model.track(frame, persist=True, classes=[0], conf=MIN_CONFIDENCE) # class 0 is person
+
     return True, frame, results
 
 def get_gstreamer_pipeline():
@@ -123,10 +128,21 @@ async def process_video_stream(video_source=0):
         # E.g. reading from a file or mock string
         cap = cv2.VideoCapture(video_source)
 
+    # Frame skip optimization (process every Nth frame)
+    frame_count = 0
+    PROCESS_EVERY_N_FRAMES = 3
+
     while cap.isOpened():
-        success, frame, results = await asyncio.to_thread(capture_and_track, cap)
+        frame_count += 1
+        process_this_frame = (frame_count % PROCESS_EVERY_N_FRAMES == 0)
+
+        success, frame, results = await asyncio.to_thread(capture_and_track, cap, process_this_frame)
         if not success:
             break
+
+        if not process_this_frame or results is None:
+            await asyncio.sleep(0.005)
+            continue
 
         if results[0].boxes.id is not None:
             boxes = results[0].boxes.xyxy.cpu()

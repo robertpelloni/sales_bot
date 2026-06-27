@@ -1,4 +1,9 @@
 # CHANGELOG
+## [1.2.0] - Latency Optimization & Deployment Architecture Update
+- Refactored `docker-compose.yml` to define isolated `hub` and `edge/kiosk` services using `argparse` modes in `src/main.py` for decoupled deployment logic.
+- Implemented frame skipping inside the `vision.py` tracking loop (processing every 3rd frame) significantly reducing CPU/GPU overhead.
+- Optimized the OpenAI LLM prompt stream buffer by constraining `max_tokens=50`, minimizing Time-To-First-Token latency for initial Text-to-Speech generation.
+
 ## [1.1.0] - Multi-Node Scaling Architecture
 - Implemented `NODE_ID` architecture across all microservices, allowing multiple kiosks to share a single centralized POS/Analytics database.
 - Refactored Redis `pub/sub` streams to be node-specific (e.g. `CUSTOMER_DETECTED:<NODE_ID>`) preventing crosstalk.
