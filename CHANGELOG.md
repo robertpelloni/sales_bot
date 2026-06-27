@@ -1,4 +1,8 @@
 # CHANGELOG
+## [1.5.1] - Hardware Stability & Final Deployment Polish
+- Hardened `src/vision.py` against USB camera disconnects. The node will now sleep and re-initialize `VideoCapture` automatically rather than crashing the async loop.
+- Added comprehensive production deployment instructions (`PRODUCTION_DEPLOYMENT.md`) covering physical hardware, OS dependencies, and Systemd autostart services.
+
 ## [1.5.0] - Benchmarking & Integration Testing
 - Created `src/demo_benchmark.py` to allow users to easily test the pipeline without a physical camera and to measure core system TTFT (Time-To-First-Token) latency.
 - Updated `README.md` to include quickstart demo execution instructions.

@@ -118,7 +118,7 @@ async def check_repeat_customer(embedding):
         logger.info(f"[Vision] Error checking repeat customer: {e}")
         return False
 
-async def process_video_stream(video_source=0):
+def open_camera(video_source):
     # Attempt hardware acceleration using GStreamer if a numeric ID is given
     if isinstance(video_source, int):
         cap = cv2.VideoCapture(get_gstreamer_pipeline(), cv2.CAP_GSTREAMER)
@@ -129,82 +129,94 @@ async def process_video_stream(video_source=0):
     else:
         # E.g. reading from a file or mock string
         cap = cv2.VideoCapture(video_source)
+    return cap
+
+async def process_video_stream(video_source=0):
+    cap = open_camera(video_source)
 
     # Frame skip optimization (process every Nth frame)
     frame_count = 0
     PROCESS_EVERY_N_FRAMES = 3
 
     try:
-        while cap.isOpened():
+        while True:
+            if not cap.isOpened():
+                logger.info("[Vision] Camera disconnected. Attempting to reconnect in 5 seconds...")
+                await asyncio.sleep(5)
+                cap = open_camera(video_source)
+                continue
+
             frame_count += 1
             process_this_frame = (frame_count % PROCESS_EVERY_N_FRAMES == 0)
 
             success, frame, results = await asyncio.to_thread(capture_and_track, cap, process_this_frame)
             if not success:
-                break
+                logger.info("[Vision] Failed to read frame. Hardware may have crashed. Reconnecting...")
+                cap.release()
+                continue
 
-        if not process_this_frame or results is None:
-            await asyncio.sleep(0.005)
-            continue
+            if not process_this_frame or results is None:
+                await asyncio.sleep(0.005)
+                continue
 
-        if results[0].boxes.id is not None:
-            boxes = results[0].boxes.xyxy.cpu()
-            track_ids = results[0].boxes.id.int().cpu().tolist()
+            if results[0].boxes.id is not None:
+                boxes = results[0].boxes.xyxy.cpu()
+                track_ids = results[0].boxes.id.int().cpu().tolist()
 
-            for box, track_id in zip(boxes, track_ids):
-                x1, y1, x2, y2 = map(int, box)
-                box_height = y2 - y1
-                frame_height = frame.shape[0]
+                for box, track_id in zip(boxes, track_ids):
+                    x1, y1, x2, y2 = map(int, box)
+                    box_height = y2 - y1
+                    frame_height = frame.shape[0]
 
-                # Proximity calculation
-                proximity_ratio = box_height / float(frame_height)
+                    # Proximity calculation
+                    proximity_ratio = box_height / float(frame_height)
 
-                # Check for dwell time and proximity
-                current_time = time.time()
-                if track_id not in START_TIMES:
-                    if proximity_ratio >= MIN_PROXIMITY_RATIO:
-                        START_TIMES[track_id] = current_time
-                elif current_time - START_TIMES[track_id] >= DWELL_TIME_THRESHOLD:
-                    if proximity_ratio < MIN_PROXIMITY_RATIO:
-                        # Reset tracking if they back away
-                        del START_TIMES[track_id]
-                        continue
+                    # Check for dwell time and proximity
+                    current_time = time.time()
+                    if track_id not in START_TIMES:
+                        if proximity_ratio >= MIN_PROXIMITY_RATIO:
+                            START_TIMES[track_id] = current_time
+                    elif current_time - START_TIMES[track_id] >= DWELL_TIME_THRESHOLD:
+                        if proximity_ratio < MIN_PROXIMITY_RATIO:
+                            # Reset tracking if they back away
+                            del START_TIMES[track_id]
+                            continue
 
-                    # Capture the target
-                    cropped_frame = frame[max(0, y1):min(frame.shape[0], y2), max(0, x1):min(frame.shape[1], x2)]
+                        # Capture the target
+                        cropped_frame = frame[max(0, y1):min(frame.shape[0], y2), max(0, x1):min(frame.shape[1], x2)]
 
-                    if cropped_frame.size > 0:
-                        # Encode image as JPEG
-                        _, buffer = cv2.imencode('.jpg', cropped_frame, [int(cv2.IMWRITE_JPEG_QUALITY), 70])
-                        img_str = base64.b64encode(buffer).decode('utf-8')
+                        if cropped_frame.size > 0:
+                            # Encode image as JPEG
+                            _, buffer = cv2.imencode('.jpg', cropped_frame, [int(cv2.IMWRITE_JPEG_QUALITY), 70])
+                            img_str = base64.b64encode(buffer).decode('utf-8')
 
-                        # Assign A/B Testing Strategy
-                        strategy = "A_AGGRESSIVE" if random.random() > 0.5 else "B_EMPATHETIC"
+                            # Assign A/B Testing Strategy
+                            strategy = "A_AGGRESSIVE" if random.random() > 0.5 else "B_EMPATHETIC"
 
-                        # Process Facial Embedding to check for Repeat Customer
-                        face_embedding = FaceEmbedding.get_embedding(cropped_frame)
-                        is_repeat = await check_repeat_customer(face_embedding)
+                            # Process Facial Embedding to check for Repeat Customer
+                            face_embedding = FaceEmbedding.get_embedding(cropped_frame)
+                            is_repeat = await check_repeat_customer(face_embedding)
 
-                        # Extract pseudo-metadata
-                        metadata = {
-                            "id": track_id,
-                            "attributes": ["a customer standing nearby"], # In real scenario, extract clothing colors etc.
-                            "strategy": strategy,
-                            "is_repeat_customer": is_repeat,
-                            "node_id": NODE_ID
-                        }
+                            # Extract pseudo-metadata
+                            metadata = {
+                                "id": track_id,
+                                "attributes": ["a customer standing nearby"], # In real scenario, extract clothing colors etc.
+                                "strategy": strategy,
+                                "is_repeat_customer": is_repeat,
+                                "node_id": NODE_ID
+                            }
 
-                        payload = {
-                            "metadata": metadata,
-                            "image_b64": img_str
-                        }
+                            payload = {
+                                "metadata": metadata,
+                                "image_b64": img_str
+                            }
 
-                        # Emit event on NODE specific channel
-                        await r.publish(f'CUSTOMER_DETECTED:{NODE_ID}', json.dumps(payload))
-                        logger.info(f"Customer {track_id} locked. Triggering event on {NODE_ID}. Repeat: {is_repeat}")
+                            # Emit event on NODE specific channel
+                            await r.publish(f'CUSTOMER_DETECTED:{NODE_ID}', json.dumps(payload))
+                            logger.info(f"Customer {track_id} locked. Triggering event on {NODE_ID}. Repeat: {is_repeat}")
 
-                        # Reset tracking to avoid spamming
-                        START_TIMES[track_id] = current_time + 60 # Cooldown
+                            # Reset tracking to avoid spamming
+                            START_TIMES[track_id] = current_time + 60 # Cooldown
 
             await asyncio.sleep(0.01) # Small sleep to avoid blocking
     except asyncio.CancelledError:
