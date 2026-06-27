@@ -1,4 +1,4 @@
 # HANDOFF
-- **Session Summary:** Completely containerized the Project Sirens edge architecture using Docker and Docker Compose. Environment variables correctly configure the Redis IPC networking stack without hardcoded hosts. The deployment handles video device passthrough and SQLite volume binding securely.
-- **Current State:** The main branch is fully complete (v1.0.0). The codebase features hardware acceleration, analytics, POS integration, facial embeddings, and A/B tracking, all orchestrated in Docker.
-- **Next Steps:** Performance optimization and scaling assessment.
+- **Session Summary:** Refactored the architecture to support Multi-Node Kiosk Scaling. Introduced `NODE_ID` tracking across all services. Redis streams are now node-specific to avoid edge-device crosstalk. Centralized `analytics.py` and the `dashboard.py` aggregate these nodes seamlessly via Redis psubscribe.
+- **Current State:** Version 1.1.0 complete. The pipeline supports robust enterprise deployments spanning multiple kiosks mapped to one hub.
+- **Next Steps:** Hardware QA testing, GUI polishing.
