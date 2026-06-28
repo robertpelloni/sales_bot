@@ -6,14 +6,17 @@ import unittest
 import redis.asyncio as redis
 from src.analytics import process_analytics, DB_FILE
 
+
 class TestAnalytics(unittest.IsolatedAsyncioTestCase):
 
     async def asyncSetUp(self):
-        self.redis = redis.Redis(host=os.environ.get('REDIS_HOST', 'localhost'), port=6379, db=0)
+        self.redis = redis.Redis(
+            host=os.environ.get("REDIS_HOST", "localhost"), port=6379, db=0
+        )
         # Clear DB table
         conn = sqlite3.connect(DB_FILE)
         cursor = conn.cursor()
-        cursor.execute('''
+        cursor.execute("""
             CREATE TABLE IF NOT EXISTS funnel (
                 session_id INTEGER,
                 node_id TEXT,
@@ -23,7 +26,7 @@ class TestAnalytics(unittest.IsolatedAsyncioTestCase):
                 strategy TEXT,
                 PRIMARY KEY (session_id, node_id)
             )
-        ''')
+        """)
         cursor.execute("DELETE FROM funnel")
         conn.commit()
         conn.close()
@@ -35,14 +38,14 @@ class TestAnalytics(unittest.IsolatedAsyncioTestCase):
     async def test_funnel_tracking(self):
         # Start analytics background task
         analytics_task = asyncio.create_task(process_analytics())
-        await asyncio.sleep(0.1) # allow subscription
+        await asyncio.sleep(0.1)  # allow subscription
 
         # 1. Detection
         payload = {
             "metadata": {"id": 100, "attributes": ["mock test attributes"]},
-            "image_b64": "mock_img"
+            "image_b64": "mock_img",
         }
-        await self.redis.publish('CUSTOMER_DETECTED:kiosk_default', json.dumps(payload))
+        await self.redis.publish("CUSTOMER_DETECTED:kiosk_default", json.dumps(payload))
         await asyncio.sleep(0.1)
 
         conn = sqlite3.connect(DB_FILE)
@@ -52,7 +55,9 @@ class TestAnalytics(unittest.IsolatedAsyncioTestCase):
         conn.close()
 
         # 2. Convert
-        await self.redis.publish('CUSTOMER_CONVERTED:kiosk_default', json.dumps({"id": 100}))
+        await self.redis.publish(
+            "CUSTOMER_CONVERTED:kiosk_default", json.dumps({"id": 100})
+        )
         await asyncio.sleep(0.1)
 
         conn = sqlite3.connect(DB_FILE)
@@ -71,5 +76,6 @@ class TestAnalytics(unittest.IsolatedAsyncioTestCase):
         except asyncio.CancelledError:
             pass
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

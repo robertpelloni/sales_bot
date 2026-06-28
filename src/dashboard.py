@@ -1,4 +1,5 @@
 from src.logger import get_logger
+
 logger = get_logger(__name__)
 import json
 import sqlite3
@@ -13,14 +14,17 @@ app = FastAPI(title="Project Sirens Vendor Dashboard")
 DB_FILE = "data/analytics.db"
 INVENTORY_FILE = "config/inventory.json"
 
+
 class InventoryItem(BaseModel):
     product_name: str
     price_usd: float
     unique_selling_points: List[str]
 
+
 class InventoryUpdate(BaseModel):
     store_name: str
     items: List[InventoryItem]
+
 
 @app.get("/", response_class=HTMLResponse)
 async def read_dashboard():
@@ -34,11 +38,15 @@ async def read_dashboard():
         funnel_data = dict(cursor.fetchall())
 
         # Strategy A/B testing stats
-        cursor.execute("SELECT strategy, COUNT(*) FROM funnel WHERE status='CONVERTED' GROUP BY strategy")
+        cursor.execute(
+            "SELECT strategy, COUNT(*) FROM funnel WHERE status='CONVERTED' GROUP BY strategy"
+        )
         strategy_data = dict(cursor.fetchall())
 
         # Node performance stats
-        cursor.execute("SELECT node_id, COUNT(*) FROM funnel WHERE status='CONVERTED' GROUP BY node_id")
+        cursor.execute(
+            "SELECT node_id, COUNT(*) FROM funnel WHERE status='CONVERTED' GROUP BY node_id"
+        )
         node_data = dict(cursor.fetchall())
 
         conn.close()
@@ -55,24 +63,25 @@ async def read_dashboard():
 
     # Fetch Inventory
     import redis
-    r = redis.Redis(host=os.environ.get('REDIS_HOST', 'localhost'), port=6379, db=0)
+
+    r = redis.Redis(host=os.environ.get("REDIS_HOST", "localhost"), port=6379, db=0)
 
     live_inventory_bytes = r.get("live_inventory")
     if live_inventory_bytes:
-        inventory_data = json.loads(live_inventory_bytes.decode('utf-8'))
+        inventory_data = json.loads(live_inventory_bytes.decode("utf-8"))
         source_label = "<span class='badge live'>Live POS Cache</span>"
     else:
-        with open(INVENTORY_FILE, 'r') as f:
+        with open(INVENTORY_FILE, "r") as f:
             inventory_data = json.load(f)
             source_label = "<span class='badge static'>Static Config</span>"
 
     # Build Inventory HTML Table
     inv_rows = ""
-    for item in inventory_data.get('items', []):
-        stock = item.get('stock_level', 'N/A')
-        price = item.get('price_usd', 0.0)
-        name = item.get('product_name', 'Unknown')
-        usps = "<br>".join(item.get('unique_selling_points', []))
+    for item in inventory_data.get("items", []):
+        stock = item.get("stock_level", "N/A")
+        price = item.get("price_usd", 0.0)
+        name = item.get("product_name", "Unknown")
+        usps = "<br>".join(item.get("unique_selling_points", []))
         inv_rows += f"<tr><td>{name}</td><td>${price:.2f}</td><td>{stock}</td><td>{usps}</td></tr>"
 
     html_content = f"""
@@ -202,19 +211,22 @@ async def read_dashboard():
     """
     return html_content
 
+
 @app.get("/api/inventory")
 async def get_inventory():
-    with open(INVENTORY_FILE, 'r') as f:
+    with open(INVENTORY_FILE, "r") as f:
         return json.load(f)
+
 
 @app.post("/api/inventory")
 async def update_inventory(inventory: InventoryUpdate):
     try:
-        with open(INVENTORY_FILE, 'w') as f:
+        with open(INVENTORY_FILE, "w") as f:
             json.dump(inventory.dict(), f, indent=2)
         return {"status": "success", "message": "Inventory updated successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 async def serve_dashboard():
     config = uvicorn.Config(app, host="0.0.0.0", port=8000, log_level="info")
@@ -222,6 +234,8 @@ async def serve_dashboard():
     logger.info("Starting Vendor Dashboard on port 8000...")
     await server.serve()
 
+
 if __name__ == "__main__":
     import asyncio
+
     asyncio.run(serve_dashboard())

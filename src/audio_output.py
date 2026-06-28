@@ -1,18 +1,20 @@
 from src.logger import get_logger
+
 logger = get_logger(__name__)
 import asyncio
 import redis.asyncio as redis
 import subprocess
 import os
 
-r = redis.Redis(host=os.environ.get('REDIS_HOST', 'localhost'), port=6379, db=0)
+r = redis.Redis(host=os.environ.get("REDIS_HOST", "localhost"), port=6379, db=0)
 
-NODE_ID = os.environ.get('NODE_ID', 'kiosk_default')
+NODE_ID = os.environ.get("NODE_ID", "kiosk_default")
+
 
 async def process_audio_chunks():
     try:
         pubsub = r.pubsub()
-        await pubsub.subscribe(f'AUDIO_CHUNK_READY:{NODE_ID}')
+        await pubsub.subscribe(f"AUDIO_CHUNK_READY:{NODE_ID}")
         logger.info(f"Listening for audio chunks on node {NODE_ID}...")
 
         PIPER_EXEC = "vendor/piper/piper"
@@ -22,8 +24,8 @@ async def process_audio_chunks():
         piper_available = os.path.isfile(PIPER_EXEC)
 
         async for message in pubsub.listen():
-            if message['type'] == 'message':
-                chunk = message['data'].decode('utf-8')
+            if message["type"] == "message":
+                chunk = message["data"].decode("utf-8")
                 logger.info(f"[Audio Output] Speaking: {chunk}")
 
                 if piper_available:
@@ -31,13 +33,14 @@ async def process_audio_chunks():
                     try:
                         # Use a shell with shlex quoting to prevent injection
                         import shlex
+
                         safe_chunk = shlex.quote(chunk)
-                        command = f'echo {safe_chunk} | {PIPER_EXEC} --model {MODEL} --output_file - | aplay -q'
+                        command = f"echo {safe_chunk} | {PIPER_EXEC} --model {MODEL} --output_file - | aplay -q"
 
                         process = await asyncio.create_subprocess_shell(
                             command,
                             stdout=asyncio.subprocess.PIPE,
-                            stderr=asyncio.subprocess.PIPE
+                            stderr=asyncio.subprocess.PIPE,
                         )
                         await process.communicate()
                     except Exception as e:
@@ -49,6 +52,7 @@ async def process_audio_chunks():
         logger.info(f"[Audio Output] Cancelled for node {NODE_ID}.")
     finally:
         await r.aclose()
+
 
 if __name__ == "__main__":
     asyncio.run(process_audio_chunks())

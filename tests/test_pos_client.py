@@ -5,10 +5,13 @@ import unittest
 import redis.asyncio as redis
 from src.pos_client import mock_pos_system
 
+
 class TestPOSClient(unittest.IsolatedAsyncioTestCase):
 
     async def asyncSetUp(self):
-        self.redis = redis.Redis(host=os.environ.get('REDIS_HOST', 'localhost'), port=6379, db=0)
+        self.redis = redis.Redis(
+            host=os.environ.get("REDIS_HOST", "localhost"), port=6379, db=0
+        )
 
     async def asyncTearDown(self):
         await self.redis.delete("live_inventory")
@@ -25,7 +28,7 @@ class TestPOSClient(unittest.IsolatedAsyncioTestCase):
         inventory_bytes = await self.redis.get("live_inventory")
         self.assertIsNotNone(inventory_bytes)
 
-        inventory = json.loads(inventory_bytes.decode('utf-8'))
+        inventory = json.loads(inventory_bytes.decode("utf-8"))
         self.assertIn("items", inventory)
         self.assertTrue(len(inventory["items"]) > 0)
 
@@ -40,5 +43,6 @@ class TestPOSClient(unittest.IsolatedAsyncioTestCase):
         except asyncio.CancelledError:
             pass
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

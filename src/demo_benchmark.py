@@ -1,4 +1,5 @@
 from src.logger import get_logger
+
 logger = get_logger(__name__)
 import asyncio
 import json
@@ -7,9 +8,10 @@ import time
 import os
 import redis.asyncio as redis
 
-r = redis.Redis(host=os.environ.get('REDIS_HOST', 'localhost'), port=6379, db=0)
+r = redis.Redis(host=os.environ.get("REDIS_HOST", "localhost"), port=6379, db=0)
 
-NODE_ID = os.environ.get('NODE_ID', 'kiosk_benchmark')
+NODE_ID = os.environ.get("NODE_ID", "kiosk_benchmark")
+
 
 async def run_benchmark():
     logger.info("=========================================")
@@ -17,32 +19,32 @@ async def run_benchmark():
     logger.info("=========================================")
 
     pubsub = r.pubsub()
-    await pubsub.subscribe(f'AUDIO_CHUNK_READY:{NODE_ID}')
+    await pubsub.subscribe(f"AUDIO_CHUNK_READY:{NODE_ID}")
 
     # Generate mock base64 image
-    mock_img = base64.b64encode(b"mock_image_data_for_benchmark").decode('utf-8')
+    mock_img = base64.b64encode(b"mock_image_data_for_benchmark").decode("utf-8")
 
     payload = {
         "metadata": {
             "id": 9999,
             "attributes": ["wearing a blue athletic jacket, holding a coffee cup"],
             "strategy": "A_AGGRESSIVE",
-            "is_repeat_customer": False
+            "is_repeat_customer": False,
         },
-        "image_b64": mock_img
+        "image_b64": mock_img,
     }
 
     logger.info("-> Emitting CUSTOMER_DETECTED event to Redis...")
     start_time = time.time()
 
-    await r.publish(f'CUSTOMER_DETECTED:{NODE_ID}', json.dumps(payload))
+    await r.publish(f"CUSTOMER_DETECTED:{NODE_ID}", json.dumps(payload))
 
     # Wait for the first chunk to return
     first_chunk_received = False
 
     async for message in pubsub.listen():
-        if message['type'] == 'message':
-            chunk = message['data'].decode('utf-8')
+        if message["type"] == "message":
+            chunk = message["data"].decode("utf-8")
 
             if not first_chunk_received:
                 ttft = (time.time() - start_time) * 1000
@@ -55,8 +57,11 @@ async def run_benchmark():
             # For this simple demo script, we'll wait for a few chunks and then timeout.
             pass
 
+
 async def main():
-    logger.info("Note: The 'llm_client' microservice MUST be running for this benchmark to work.")
+    logger.info(
+        "Note: The 'llm_client' microservice MUST be running for this benchmark to work."
+    )
     logger.info("Run in another terminal: python3 -m src.main --mode edge")
 
     try:
@@ -65,6 +70,7 @@ async def main():
         logger.info("Benchmark finished. Stream timeout reached.")
     finally:
         await r.aclose()
+
 
 if __name__ == "__main__":
     asyncio.run(main())

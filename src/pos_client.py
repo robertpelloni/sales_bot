@@ -1,4 +1,5 @@
 from src.logger import get_logger
+
 logger = get_logger(__name__)
 import os
 import asyncio
@@ -6,9 +7,10 @@ import json
 import random
 import redis.asyncio as redis
 
-r = redis.Redis(host=os.environ.get('REDIS_HOST', 'localhost'), port=6379, db=0)
+r = redis.Redis(host=os.environ.get("REDIS_HOST", "localhost"), port=6379, db=0)
 
 INVENTORY_FILE = "config/inventory.json"
+
 
 async def mock_pos_system():
     logger.info("Starting Mock POS Dynamic Pricing System...")
@@ -17,10 +19,13 @@ async def mock_pos_system():
         while True:
             try:
                 # Read base inventory
-                with open(INVENTORY_FILE, 'r') as f:
+                with open(INVENTORY_FILE, "r") as f:
                     base_inventory = json.load(f)
 
-                dynamic_inventory = {"store_name": base_inventory["store_name"], "items": []}
+                dynamic_inventory = {
+                    "store_name": base_inventory["store_name"],
+                    "items": [],
+                }
 
                 for item in base_inventory["items"]:
                     # Simulate live stock levels
@@ -31,11 +36,15 @@ async def mock_pos_system():
                     if stock_level > 80:
                         # Fire sale discount
                         dynamic_price = round(original_price * 0.85, 2)
-                        item["unique_selling_points"].append("MANAGER'S SPECIAL: 15% OFF today only to clear inventory!")
+                        item["unique_selling_points"].append(
+                            "MANAGER'S SPECIAL: 15% OFF today only to clear inventory!"
+                        )
                     elif stock_level < 5:
                         # Scarcity premium
                         dynamic_price = round(original_price * 1.10, 2)
-                        item["unique_selling_points"].append(f"EXTREME SCARCITY: Only {stock_level} units left in the state. High demand item.")
+                        item["unique_selling_points"].append(
+                            f"EXTREME SCARCITY: Only {stock_level} units left in the state. High demand item."
+                        )
                     else:
                         dynamic_price = original_price
 
@@ -43,7 +52,7 @@ async def mock_pos_system():
                         "product_name": item["product_name"],
                         "price_usd": dynamic_price,
                         "stock_level": stock_level,
-                        "unique_selling_points": item["unique_selling_points"]
+                        "unique_selling_points": item["unique_selling_points"],
                     }
                     dynamic_inventory["items"].append(dynamic_item)
 
@@ -59,6 +68,7 @@ async def mock_pos_system():
         logger.info("[POS Client] Stopped mock pricing system.")
     finally:
         await r.aclose()
+
 
 if __name__ == "__main__":
     asyncio.run(mock_pos_system())

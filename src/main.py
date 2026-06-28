@@ -1,4 +1,5 @@
 from src.logger import get_logger
+
 logger = get_logger(__name__)
 import os
 import asyncio
@@ -13,40 +14,51 @@ from src.pos_client import mock_pos_system
 
 import argparse
 
+
 async def main():
     parser = argparse.ArgumentParser(description="Project Sirens Orchestrator")
-    parser.add_argument("--mode", type=str, default="all", choices=["all", "hub", "edge"], help="Operating mode of the node")
-    parser.add_argument("--video_source", type=str, default="0", help="Video source (index or path)")
+    parser.add_argument(
+        "--mode",
+        type=str,
+        default="all",
+        choices=["all", "hub", "edge"],
+        help="Operating mode of the node",
+    )
+    parser.add_argument(
+        "--video_source", type=str, default="0", help="Video source (index or path)"
+    )
     args = parser.parse_args()
 
     logger.info(f"Starting Project Sirens Orchestrator in {args.mode.upper()} mode...")
 
-    video_source = int(args.video_source) if args.video_source.isdigit() else args.video_source
+    video_source = (
+        int(args.video_source) if args.video_source.isdigit() else args.video_source
+    )
 
     tasks = []
 
     if args.mode in ["all", "edge"]:
-        tasks.extend([
-            process_video_stream(video_source=video_source),
-            handle_events(),
-            process_audio_chunks(),
-            process_audio_input()
-        ])
+        tasks.extend(
+            [
+                process_video_stream(video_source=video_source),
+                handle_events(),
+                process_audio_chunks(),
+                process_audio_input(),
+            ]
+        )
 
     if args.mode in ["all", "hub"]:
-        tasks.extend([
-            process_analytics(),
-            serve_dashboard(),
-            mock_pos_system()
-        ])
+        tasks.extend([process_analytics(), serve_dashboard(), mock_pos_system()])
 
     try:
         await asyncio.gather(*tasks)
     except asyncio.CancelledError:
         logger.info("Main orchestrator tasks cancelled.")
 
+
 if __name__ == "__main__":
     import signal
+
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
 
@@ -66,7 +78,9 @@ if __name__ == "__main__":
         pass
     finally:
         logger.info("Cleaning up running tasks...")
-        tasks = [t for t in asyncio.all_tasks(loop) if t is not asyncio.current_task(loop)]
+        tasks = [
+            t for t in asyncio.all_tasks(loop) if t is not asyncio.current_task(loop)
+        ]
         for task in tasks:
             task.cancel()
 

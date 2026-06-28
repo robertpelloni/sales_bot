@@ -1,4 +1,5 @@
 from src.logger import get_logger
+
 logger = get_logger(__name__)
 import asyncio
 import json
@@ -10,21 +11,24 @@ import redis.asyncio as redis
 # Init OpenAI client (Requires OPENAI_API_KEY environment variable)
 client = AsyncOpenAI(api_key=os.environ.get("OPENAI_API_KEY", "mock-key"))
 
-NODE_ID = os.environ.get('NODE_ID', 'kiosk_default')
+NODE_ID = os.environ.get("NODE_ID", "kiosk_default")
+
 
 def load_modifiers():
-    with open('config/prompt_modifiers.json', 'r') as f:
+    with open("config/prompt_modifiers.json", "r") as f:
         return json.load(f)
 
+
 MODIFIERS = load_modifiers()
+
 
 async def get_dynamic_system_prompt(r, strategy="DEFAULT", is_repeat=False):
     # Load dynamic inventory from POS Redis Cache, fallback to static if not ready
     live_inventory_bytes = await r.get("live_inventory")
     if live_inventory_bytes:
-        inventory = json.loads(live_inventory_bytes.decode('utf-8'))
+        inventory = json.loads(live_inventory_bytes.decode("utf-8"))
     else:
-        with open('config/inventory.json', 'r') as f:
+        with open("config/inventory.json", "r") as f:
             inventory = json.load(f)
 
     # Convert strategy enum into specific instructions
@@ -57,15 +61,18 @@ If the customer replies, match their pacing and use the Assumptive Close or Ben 
 If the customer shows direct intent to purchase or agrees to buy, explicitly state "CONVERSION_SUCCESS_TRIGGER" in your response exactly as written.
 """
 
+
 async def fetch_session_history(r, track_id):
     history_json = await r.get(f"session:{NODE_ID}:{track_id}")
     if history_json:
-        return json.loads(history_json.decode('utf-8'))
+        return json.loads(history_json.decode("utf-8"))
     return []
+
 
 async def save_session_history(r, track_id, history):
     # Set an expiration of 5 minutes for session history
     await r.set(f"session:{NODE_ID}:{track_id}", json.dumps(history), ex=300)
+
 
 async def handle_llm_stream(r, track_id, messages):
     try:
@@ -73,7 +80,7 @@ async def handle_llm_stream(r, track_id, messages):
             model="gpt-4o-mini",
             messages=messages,
             stream=True,
-            max_tokens=50 # Optimized for extremely low-latency initial TTS response
+            max_tokens=50,  # Optimized for extremely low-latency initial TTS response
         )
 
         buffer = ""
@@ -85,31 +92,40 @@ async def handle_llm_stream(r, track_id, messages):
                 full_response += text_chunk
 
                 # Check for sentence-ending punctuation
-                match = re.search(r'([.!?])(\s+.*)?$', buffer)
-                if match and not buffer.endswith(('.', '!', '?')):
+                match = re.search(r"([.!?])(\s+.*)?$", buffer)
+                if match and not buffer.endswith((".", "!", "?")):
                     # End of sentence found, split it correctly
                     split_index = match.start(1) + 1
                     sentence = buffer[:split_index].strip()
                     buffer = buffer[split_index:].lstrip()
-                    safe_sentence = sentence.replace("CONVERSION_SUCCESS_TRIGGER", "").strip()
+                    safe_sentence = sentence.replace(
+                        "CONVERSION_SUCCESS_TRIGGER", ""
+                    ).strip()
                     if safe_sentence:
-                        await r.publish(f'AUDIO_CHUNK_READY:{NODE_ID}', safe_sentence)
-                elif buffer.endswith(('.', '!', '?')):
-                    safe_sentence = buffer.strip().replace("CONVERSION_SUCCESS_TRIGGER", "").strip()
+                        await r.publish(f"AUDIO_CHUNK_READY:{NODE_ID}", safe_sentence)
+                elif buffer.endswith((".", "!", "?")):
+                    safe_sentence = (
+                        buffer.strip().replace("CONVERSION_SUCCESS_TRIGGER", "").strip()
+                    )
                     if safe_sentence:
-                        await r.publish(f'AUDIO_CHUNK_READY:{NODE_ID}', safe_sentence)
+                        await r.publish(f"AUDIO_CHUNK_READY:{NODE_ID}", safe_sentence)
                     buffer = ""
 
         # Flush remaining buffer
         if buffer.strip():
-            safe_sentence = buffer.strip().replace("CONVERSION_SUCCESS_TRIGGER", "").strip()
+            safe_sentence = (
+                buffer.strip().replace("CONVERSION_SUCCESS_TRIGGER", "").strip()
+            )
             if safe_sentence:
-                await r.publish(f'AUDIO_CHUNK_READY:{NODE_ID}', safe_sentence)
+                await r.publish(f"AUDIO_CHUNK_READY:{NODE_ID}", safe_sentence)
 
         if "CONVERSION_SUCCESS_TRIGGER" in full_response:
             # Emit success to analytics and trim the trigger from TTS output if missed
             # Send node_id for metrics
-            await r.publish(f'CUSTOMER_CONVERTED:{NODE_ID}', json.dumps({"id": track_id, "node_id": NODE_ID}))
+            await r.publish(
+                f"CUSTOMER_CONVERTED:{NODE_ID}",
+                json.dumps({"id": track_id, "node_id": NODE_ID}),
+            )
 
         return full_response.replace("CONVERSION_SUCCESS_TRIGGER", "")
 
@@ -117,51 +133,58 @@ async def handle_llm_stream(r, track_id, messages):
         logger.info(f"[LLM Client] Error generating response: {e}")
         return ""
 
+
 async def handle_events():
-    r = redis.Redis(host=os.environ.get('REDIS_HOST', 'localhost'), port=6379, db=0)
+    r = redis.Redis(host=os.environ.get("REDIS_HOST", "localhost"), port=6379, db=0)
     try:
         pubsub = r.pubsub()
-        await pubsub.subscribe(f'CUSTOMER_DETECTED:{NODE_ID}', f'CUSTOMER_REPLY:{NODE_ID}')
-        logger.info(f"LLM Client listening for detections and replies on node {NODE_ID}...")
+        await pubsub.subscribe(
+            f"CUSTOMER_DETECTED:{NODE_ID}", f"CUSTOMER_REPLY:{NODE_ID}"
+        )
+        logger.info(
+            f"LLM Client listening for detections and replies on node {NODE_ID}..."
+        )
 
         async for message in pubsub.listen():
-            if message['type'] == 'message':
-                channel = message['channel'].decode('utf-8')
-                data = json.loads(message['data'].decode('utf-8'))
+            if message["type"] == "message":
+                channel = message["channel"].decode("utf-8")
+                data = json.loads(message["data"].decode("utf-8"))
 
-                if channel.startswith('CUSTOMER_DETECTED'):
-                    metadata = data['metadata']
-                    track_id = metadata['id']
-                    strategy = metadata.get('strategy', 'DEFAULT')
-                    is_repeat = metadata.get('is_repeat_customer', False)
-                    image_b64 = data['image_b64']
+                if channel.startswith("CUSTOMER_DETECTED"):
+                    metadata = data["metadata"]
+                    track_id = metadata["id"]
+                    strategy = metadata.get("strategy", "DEFAULT")
+                    is_repeat = metadata.get("is_repeat_customer", False)
+                    image_b64 = data["image_b64"]
 
-                    logger.info(f"[LLM Client] Received detection for ID {track_id} with strategy {strategy}, Repeat: {is_repeat}")
+                    logger.info(
+                        f"[LLM Client] Received detection for ID {track_id} with strategy {strategy}, Repeat: {is_repeat}"
+                    )
 
                     # Fetch history to ensure we don't cold-open someone we're already talking to
                     history = await fetch_session_history(r, track_id)
                     if len(history) > 0:
-                        logger.info(f"[LLM Client] ID {track_id} already has an active session. Ignoring re-trigger.")
+                        logger.info(
+                            f"[LLM Client] ID {track_id} already has an active session. Ignoring re-trigger."
+                        )
                         continue
 
                     # Construct user message with image and metadata for a Cold Open
                     user_content = [
                         {
                             "type": "text",
-                            "text": f"Customer detected with attributes: {', '.join(metadata['attributes'])}. Give a brief cold open pitch."
+                            "text": f"Customer detected with attributes: {', '.join(metadata['attributes'])}. Give a brief cold open pitch.",
                         },
                         {
                             "type": "image_url",
-                            "image_url": {
-                                "url": f"data:image/jpeg;base64,{image_b64}"
-                            }
-                        }
+                            "image_url": {"url": f"data:image/jpeg;base64,{image_b64}"},
+                        },
                     ]
 
                     sys_prompt = await get_dynamic_system_prompt(r, strategy, is_repeat)
                     messages = [
                         {"role": "system", "content": sys_prompt},
-                        {"role": "user", "content": user_content}
+                        {"role": "user", "content": user_content},
                     ]
 
                     full_response = await handle_llm_stream(r, track_id, messages)
@@ -170,11 +193,13 @@ async def handle_events():
                     messages.append({"role": "assistant", "content": full_response})
                     await save_session_history(r, track_id, messages)
 
-                elif channel.startswith('CUSTOMER_REPLY'):
-                    track_id = data['id']
-                    customer_text = data['text']
+                elif channel.startswith("CUSTOMER_REPLY"):
+                    track_id = data["id"]
+                    customer_text = data["text"]
 
-                    logger.info(f"[LLM Client] Received reply from ID {track_id}: {customer_text}")
+                    logger.info(
+                        f"[LLM Client] Received reply from ID {track_id}: {customer_text}"
+                    )
 
                     history = await fetch_session_history(r, track_id)
                     if not history:
@@ -195,6 +220,7 @@ async def handle_events():
         logger.info(f"[LLM Client] Cancelled for node {NODE_ID}.")
     finally:
         await r.aclose()
+
 
 if __name__ == "__main__":
     asyncio.run(handle_events())
