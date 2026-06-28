@@ -57,3 +57,31 @@ To verify that the OpenAI LLM connection is functioning and to measure the core 
    ```
 
 The benchmark will output the time (in milliseconds) it took for the system to process the detection, query the frontier model, and generate the first speakable sentence chunk.
+
+## Configuration Guide
+
+The behavior and knowledge base of the sales agent are entirely driven by local JSON configurations located in the `config/` directory.
+
+### `config/inventory.json`
+This file acts as the primary knowledge base for the LLM. It defines the store's name and the products available for sale.
+*   **`product_name`**: The exact name of the item.
+*   **`price_usd`**: The baseline price of the item.
+*   **`unique_selling_points`**: A list of key features and benefits the LLM will draw upon to handle objections and build value during the pitch.
+
+### `config/prompt_modifiers.json`
+This file dictates the psychological framework and behavioral guardrails the LLM must adhere to.
+*   **`sales_framework`**: Defines the overarching strategy (e.g., "Pattern Interrupt Cold-Open").
+*   **`tactics_enforced`**: Specific closing techniques or pacing rules (e.g., "Assumptive close formatting").
+*   **`constraints`**: Absolute rules the model must not break (e.g., "Never use generic store greetings like 'Welcome to our store'").
+
+## Usage Guide & Dashboard
+
+Once the services are running, the **Analytics Hub** provides a centralized view of system performance and active kiosk status.
+
+1.  Open a web browser and navigate to `http://localhost:8000`.
+2.  The dashboard provides real-time visualizations of:
+    *   **Conversion Funnel:** Track the number of customers approached, engaged, objections raised, and successful conversions.
+    *   **A/B Strategy Performance:** Compare the win rates of different system prompt strategies (e.g., Aggressive vs. Empathetic cold opens).
+    *   **Live POS Inventory:** View the current stock levels and active pricing modifiers injected by the POS client simulator.
+
+The system will automatically begin scanning via `/dev/video0`. When a person is detected dwelling in the frame, the edge pipeline will extract attributes, query the LLM, and output the customized audio pitch via the default system audio device.
