@@ -1,0 +1,2 @@
+# VISION
+Project Sirens is an Automated Proactive Conversational Sales Agent designed to run on embedded hardware like a Raspberry Pi 5. Its ultimate goal is to capture attention, build instant rapport, identify friction points, and close sales using advanced conversational framework strategies without requiring an active trigger from the user. It uses real-time computer vision to identify customers, extract visual attributes, and engage them with highly contextualized, personalized, and persuasive audio pitches with sub-second latency.

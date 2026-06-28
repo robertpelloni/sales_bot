@@ -1,0 +1,9 @@
+opencv-python-headless
+ultralytics
+redis
+google-genai
+openai
+pytest
+fastapi
+uvicorn
+httpx
