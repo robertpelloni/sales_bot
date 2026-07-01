@@ -1,0 +1,13 @@
+{
+  "store_name": "Apex Tech Boutique",
+  "items": [
+    {
+      "product_name": "Awesome New Jacket",
+      "price_usd": 120.0,
+      "unique_selling_points": [
+        "Waterproof",
+        "Warm"
+      ]
+    }
+  ]
+}

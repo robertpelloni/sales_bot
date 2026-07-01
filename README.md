@@ -237,3 +237,11 @@ jules remote sync
 # Spin up the asynchronous task in a Google Cloud VM
 jules remote new --task "Build Project Sirens low-latency vision-sales platform" --file-scope src/,config/
 Jules will pull down the repo, spin up its sandbox, map out the system architecture, write the asynchronous pipeline code utilizing your submodules, and output a completed Pull Request for review.
+
+## Current Implementation Status (Version 0.2.0)
+The repository currently implements Phase 1 and Phase 2 of the roadmap:
+- **Hub Dashboard UI**: Fully interactive FastAPI configuration hub for inventory, prompt settings, and system-level API configuration.
+- **Edge Vision System**: Features a mock mode and a real `cv2.VideoCapture` hardware-connected implementation utilizing YOLO object tracking, abiding by a strict 60-second in-memory-only retention policy for bounding boxes.
+- **VLM Pipeline**: Integrated with the OpenAI SDK to stream interactions directly to a mock Piper TTS pipeline via stdin subprocess pipes.
+
+Ensure `OPENAI_API_KEY` is provided to the system configuration panel to generate live responses.
