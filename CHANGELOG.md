@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## [0.3.0] - Persistent CRM Logging, Lead Tracking, & UI Redesign
+- Added persistent conversation storage using an SQLite database (via SQLAlchemy) to log customer interactions.
+- Integrated Lead Tracking: interactions can now be flagged as qualified leads via `/mark_lead` and attached with follow-up persistence notes via `/update_follow_up`.
+- Created a new `/api/log_interaction` webhook endpoint in the Hub to receive VLM Streamer events asynchronously.
+- Added visual analytics via Chart.js to the Dashboard tracking conversation frequency over time.
+- Completely redesigned the Hub Dashboard into a dense, unified single-page layout utilizing CSS grids and detailed tooltip helpers.
+- Implemented robust Post/Redirect/Get (PRG) patterns for all configuration form endpoints and added visible `error_message` rendering states for users.
+- Updated requirements.txt with explicitly pinned backend dependencies (`fastapi==0.139.0`, `playwright==1.61.0`, `sqlalchemy`, `httpx`, `pandas`).
+
 ## [0.2.0] - LLM Integration & System Config
 - Integrated OpenAI API client for live VLM streams, overriding mock logic when `OPENAI_API_KEY` is present.
 - Refactored `start_vision_loop` to attempt `cv2.VideoCapture(0)` hardware mapping when `USE_MOCK_VISION` is false.

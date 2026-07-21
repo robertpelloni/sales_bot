@@ -1,145 +1,378 @@
-
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Project Sirens Dashboard</title>
+    <title>Project Sirens - Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        body { font-family: sans-serif; margin: 20px; }
-        .container { max-width: 900px; margin: auto; }
-        .form-group { margin-bottom: 15px; }
-        label { display: block; font-weight: bold; margin-bottom: 5px; }
-        .desc { font-size: 0.9em; color: #555; margin-bottom: 5px; }
-        input[type="text"], input[type="number"], textarea { width: 100%; padding: 8px; box-sizing: border-box; }
-        button { padding: 10px 15px; background-color: #007bff; color: white; border: none; cursor: pointer; border-radius: 4px; }
-        button:hover { background-color: #0056b3; }
-        .btn-danger { background-color: #dc3545; }
-        .btn-danger:hover { background-color: #c82333; }
-        .tooltip { position: relative; display: inline-block; cursor: help; color: #007bff; }
-        .tooltip .tooltiptext { visibility: hidden; width: 250px; background-color: #333; color: #fff; text-align: center; border-radius: 6px; padding: 10px; position: absolute; z-index: 1; bottom: 125%; left: 50%; margin-left: -125px; opacity: 0; transition: opacity 0.3s; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background-color: #f0f2f5; color: #333; }
+        .container { max-width: 1400px; margin: auto; }
+        h1 { color: #2c3e50; text-align: center; margin-bottom: 30px; font-size: 2.5em; text-shadow: 1px 1px 2px rgba(0,0,0,0.1); }
+        h2 { color: #34495e; border-bottom: 2px solid #3498db; padding-bottom: 8px; margin-top: 0; font-size: 1.5em; }
+        h3 { color: #455a64; font-size: 1.2em; margin-top: 20px; margin-bottom: 10px; }
+
+        /* Grid Layout */
+        .dashboard-grid { display: grid; grid-template-columns: 1fr 1fr; grid-gap: 25px; }
+        .column { display: flex; flex-direction: column; gap: 25px; }
+        .full-width { grid-column: 1 / -1; }
+
+        .section { padding: 25px; border: 1px solid #e1e4e8; background-color: #ffffff; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); transition: transform 0.2s ease, box-shadow 0.2s ease; }
+        .section:hover { box-shadow: 0 6px 12px rgba(0,0,0,0.08); }
+
+        .form-group { margin-bottom: 18px; }
+        label { display: block; font-weight: 600; margin-bottom: 6px; color: #2c3e50; }
+        .desc { font-size: 0.85em; color: #7f8c8d; margin-bottom: 8px; font-style: italic; }
+        input[type="text"], input[type="number"], textarea, select { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #cbd5e0; border-radius: 6px; font-family: inherit; transition: border-color 0.2s; }
+        input[type="text"]:focus, input[type="number"]:focus, textarea:focus, select:focus { outline: none; border-color: #3498db; box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2); }
+
+        button { padding: 10px 18px; background-color: #3498db; color: white; border: none; cursor: pointer; border-radius: 6px; font-weight: 600; transition: background-color 0.2s, transform 0.1s; }
+        button:hover { background-color: #2980b9; transform: translateY(-1px); }
+        button:active { transform: translateY(0); }
+        .btn-danger { background-color: #e74c3c; }
+        .btn-danger:hover { background-color: #c0392b; }
+
+        .tooltip { position: relative; display: inline-block; cursor: help; color: #3498db; margin-left: 5px; font-size: 0.9em; }
+        .tooltip .tooltiptext { visibility: hidden; width: 280px; background-color: #34495e; color: #fff; text-align: left; border-radius: 6px; padding: 12px; position: absolute; z-index: 10; bottom: 125%; left: 50%; margin-left: -140px; opacity: 0; transition: opacity 0.3s; font-size: 0.9em; font-weight: normal; box-shadow: 0 4px 8px rgba(0,0,0,0.2); pointer-events: none; }
+        .tooltip .tooltiptext::after { content: ""; position: absolute; top: 100%; left: 50%; margin-left: -5px; border-width: 5px; border-style: solid; border-color: #34495e transparent transparent transparent; }
         .tooltip:hover .tooltiptext { visibility: visible; opacity: 1; }
-        .section { margin-top: 30px; padding: 20px; border: 1px solid #ddd; background-color: #fcfcfc; border-radius: 8px; }
-        .item-card { border: 1px solid #ccc; padding: 15px; margin-bottom: 15px; border-radius: 6px; background: #fff; }
-        .list-item { display: flex; justify-content: space-between; align-items: center; padding: 8px; background: #fff; border: 1px solid #eee; margin-bottom: 5px; border-radius: 4px; }
+
+        .item-card { border: 1px solid #e1e4e8; padding: 15px; margin-bottom: 15px; border-radius: 8px; background: #f8fafc; transition: background-color 0.2s; }
+        .item-card:hover { background: #f1f5f9; }
+        .list-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; background: #f8fafc; border: 1px solid #e1e4e8; margin-bottom: 8px; border-radius: 6px; }
+
+        /* Highlight High Value Section */
+        .highlight-section { border: 2px solid #3498db; background-color: #f0f8ff; }
+        .highlight-section h2 { border-bottom-color: #2980b9; color: #2980b9; }
+
+        .interaction-log-container { max-height: 400px; overflow-y: auto; padding-right: 10px; }
+        .interaction-log-container::-webkit-scrollbar { width: 8px; }
+        .interaction-log-container::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+        .interaction-log-container::-webkit-scrollbar-thumb { background: #cbd5e0; border-radius: 4px; }
+        .interaction-log-container::-webkit-scrollbar-thumb:hover { background: #a0aec0; }
+
+        .response-box { margin-top: 8px; padding: 12px; border-left: 4px solid #3498db; background: #ffffff; border-radius: 0 4px 4px 0; font-style: italic; }
+
+        .inline-form { display: flex; gap: 10px; align-items: flex-end; }
+        .inline-form .form-group { margin-bottom: 0; flex-grow: 1; }
+
+        /* Badges */
+        .badge { display: inline-block; padding: 4px 8px; border-radius: 12px; font-size: 0.8em; font-weight: bold; background-color: #e2e8f0; color: #4a5568; margin-left: 10px; vertical-align: middle; }
+        .badge-primary { background-color: #ebf8ff; color: #2b6cb0; border: 1px solid #bee3f8; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Project Sirens - Dashboard</h1>
+        <h1>Project Sirens <span style="font-weight: 300; color: #7f8c8d;">| Intelligence Dashboard</span></h1>
 
-        <div class="section">
-            <h2>Settings <span class="tooltip">ⓘ<span class="tooltiptext">Global configuration for the sales agent behavior and store details.</span></span></h2>
-            <form method="post" action="/update_settings">
-                <div class="form-group">
-                    <label for="store_name">Store Name</label>
-                    <div class="desc">The name of the store the agent is operating in.</div>
-                    <input type="text" id="store_name" name="store_name" value="{{ store_name }}" required>
-                </div>
-                <div class="form-group">
-                    <label for="sales_framework">Sales Framework</label>
-                    <div class="desc">The primary persuasion technique to employ.</div>
-                    <input type="text" id="sales_framework" name="sales_framework" value="{{ sales_framework }}" required>
-                </div>
-                <button type="submit">Save Settings</button>
-            </form>
+        {% if error_message %}
+        <div style="background-color: #fef0f0; border-left: 5px solid #f56c6c; color: #c0392b; padding: 15px; margin-bottom: 25px; border-radius: 4px; font-weight: bold;">
+            Error: {{ error_message }}
         </div>
+        {% endif %}
 
-        <div class="section">
-            <h2>System Configuration <span class="tooltip">ⓘ<span class="tooltiptext">System-level API keys and toggles for hardware devices.</span></span></h2>
-            <form method="post" action="/update_system_config">
-                <div class="form-group">
-                    <label for="openai_api_key">OpenAI API Key</label>
-                    <div class="desc">Used for the generative VLM. Leave blank to use Mock generation.</div>
-                    <input type="text" id="openai_api_key" name="openai_api_key" value="{{ openai_api_key }}">
-                </div>
-                <div class="form-group">
-                    <label for="use_mock_vision">Use Mock Vision Stream</label>
-                    <div class="desc">If True, runs a simulated local loop. If False, attempts to bind to /dev/video0.</div>
-                    <select id="use_mock_vision" name="use_mock_vision" style="width: 100%; padding: 8px;">
-                        <option value="True" {% if use_mock_vision == 'True' %}selected{% endif %}>True</option>
-                        <option value="False" {% if use_mock_vision == 'False' %}selected{% endif %}>False</option>
-                    </select>
-                </div>
-                <button type="submit">Save System Config</button>
-            </form>
-        </div>
+        <div class="dashboard-grid">
 
-        <div class="section">
-            <h2>Inventory Items <span class="tooltip">ⓘ<span class="tooltiptext">Manage the products the agent can sell, including their prices and unique selling points.</span></span></h2>
-            {% for item in items %}
-            <div class="item-card">
-                <strong>{{ item.product_name }}</strong> - ${{ item.price_usd }}
-                <ul>
-                    {% for usp in item.unique_selling_points %}
-                    <li>{{ usp }}</li>
-                    {% endfor %}
-                </ul>
+            <!-- LEFT COLUMN: Operations & Logs (High Value) -->
+            <div class="column">
+
+                <!-- Simulation Engine -->
+                <div class="section highlight-section">
+                    <h2>Simulate Detection <span class="badge badge-primary">Active</span> <span class="tooltip">ⓘ<span class="tooltiptext">The core testing engine. Simulate what the vision system sees to instantly test the agent's generated response based on your current settings, inventory, and tactics.</span></span></h2>
+                    <form method="post" action="/simulate_detection">
+                        <div class="form-group">
+                            <label for="attributes">Customer Attributes</label>
+                            <div class="desc">Comma-separated traits the mock vision system passes to the LLM.</div>
+                            <input type="text" id="attributes" name="attributes" value="navy blue windbreaker, baseball cap, holding coffee" required>
+                        </div>
+                        <div class="dashboard-grid" style="grid-template-columns: 2fr 1fr; grid-gap: 15px; margin-bottom: 15px;">
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label for="system_prompt_override">Prompt Override <span class="tooltip">ⓘ<span class="tooltiptext">Temporarily bypasses the dynamic store prompt for A/B testing a specific idea. Leave blank for normal operation.</span></span></label>
+                                <input type="text" id="system_prompt_override" name="system_prompt_override" placeholder="Optional manual override...">
+                            </div>
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label for="temperature">Creativity (Temp) <span class="tooltip">ⓘ<span class="tooltiptext">LLM Temperature (0.0 to 2.0). Lower = predictable, Higher = creative/erratic. Default: 0.8</span></span></label>
+                                <input type="number" id="temperature" name="temperature" step="0.1" min="0.0" max="2.0" value="0.8">
+                            </div>
+                        </div>
+                        <button type="submit" style="width: 100%; font-size: 1.1em; padding: 12px;">Run Simulation</button>
+                    </form>
+
+                    {% if simulated_response %}
+                    <div style="margin-top: 20px; padding: 15px; border-radius: 8px; background: #ffffff; border: 1px solid #bee3f8; box-shadow: 0 2px 4px rgba(43, 108, 176, 0.1);">
+                        <strong style="color: #2b6cb0; display: block; margin-bottom: 5px;">Agent Response Generated:</strong>
+                        <p style="margin: 0; font-size: 1.05em; line-height: 1.4;">"{{ simulated_response }}"</p>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Live Interaction Feed -->
+                <div class="section" style="flex-grow: 1; display: flex; flex-direction: column;">
+                    <h2>Live Interaction Log & Analytics <span class="badge">CRM Data</span> <span class="tooltip">ⓘ<span class="tooltiptext">A real-time database feed of recent engagements and the specific responses the agent generated for them. Data is persisted in sirens.db.</span></span></h2>
+                    <div class="dashboard-grid" style="grid-template-columns: 1fr 1fr; margin-bottom: 20px;">
+                        <div>
+                            <canvas id="interactionChart" width="100%" height="60"></canvas>
+                        </div>
+                        <div>
+                            <canvas id="frameworkChart" width="100%" height="60"></canvas>
+                        </div>
+                    </div>
+                    <div class="interaction-log-container" style="flex-grow: 1;">
+                        {% for interaction in interactions %}
+                        <div class="item-card" style="padding: 12px; {% if interaction.is_lead %}border-left: 4px solid #27ae60;{% endif %}">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                                <div>
+                                    <strong style="color: #4a5568;">Profile: {{ interaction.attributes }}</strong>
+                                    {% if interaction.is_lead %}
+                                    <span style="background-color: #e8f5e9; color: #2e7d32; padding: 2px 6px; border-radius: 4px; font-size: 0.75em; margin-left: 8px; border: 1px solid #c8e6c9;">Qualified Lead</span>
+                                    {% endif %}
+                                </div>
+                                <span style="font-size: 0.75em; color: #a0aec0; white-space: nowrap; margin-left: 10px;">{{ interaction.timestamp.strftime('%y-%m-%d %H:%M') }}</span>
+                            </div>
+                            <div class="response-box" style="margin-bottom: 10px;">
+                                "{{ interaction.response }}"
+                            </div>
+                            {% if interaction.tts_latency_ms > 0 %}
+                            <div style="font-size: 0.75em; color: #718096; margin-bottom: 8px; text-align: right;">
+                                TTS Latency: {{ interaction.tts_latency_ms }}ms
+                            </div>
+                            {% endif %}
+
+                            <div style="background: #edf2f7; padding: 10px; border-radius: 6px; font-size: 0.85em;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                                    <form method="post" action="/mark_lead/{{ interaction.id }}" style="margin: 0;">
+                                        <input type="hidden" name="is_lead" value="{{ 'False' if interaction.is_lead else 'True' }}">
+                                        <button type="submit" style="padding: 4px 8px; font-size: 0.9em; background-color: {% if interaction.is_lead %}#7f8c8d{% else %}#27ae60{% endif %};">
+                                            {% if interaction.is_lead %}Remove Lead Status{% else %}Mark as Lead{% endif %}
+                                        </button>
+                                    </form>
+
+                                    <form method="post" action="/submit_feedback/{{ interaction.id }}" style="margin: 0; display: flex; align-items: center; gap: 5px;">
+                                        <span style="color: #718096;">Rating:</span>
+                                        <button type="submit" name="feedback_score" value="1" style="padding: 2px 8px; font-size: 0.9em; background-color: {% if interaction.feedback_score == 1 %}#e74c3c{% else %}#cbd5e0{% endif %};">👎</button>
+                                        <button type="submit" name="feedback_score" value="5" style="padding: 2px 8px; font-size: 0.9em; background-color: {% if interaction.feedback_score == 5 %}#2ecc71{% else %}#cbd5e0{% endif %};">👍</button>
+                                    </form>
+                                </div>
+
+                                <form method="post" action="/update_follow_up/{{ interaction.id }}" style="display: flex; gap: 8px; margin-top: 8px;">
+                                    <input type="text" name="follow_up_notes" value="{{ interaction.follow_up_notes }}" placeholder="Add follow up notes..." style="padding: 4px 8px; font-size: 0.9em; flex-grow: 1;">
+                                    <button type="submit" style="padding: 4px 8px; font-size: 0.9em; background-color: #34495e;">Save Note</button>
+                                </form>
+                            </div>
+                        </div>
+                        {% else %}
+                        <div style="text-align: center; padding: 40px 20px; color: #a0aec0; background: #f8fafc; border-radius: 8px; border: 1px dashed #cbd5e0;">
+                            <p style="margin: 0;">No interactions logged yet. Run a simulation above to test.</p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
             </div>
-            {% endfor %}
 
-            <form method="post" action="/add_item" style="margin-top: 20px;">
-                <h4>Add New Item</h4>
-                <div class="form-group">
-                    <label for="product_name">Product Name</label>
-                    <input type="text" id="product_name" name="product_name" required>
-                </div>
-                <div class="form-group">
-                    <label for="price_usd">Price (USD)</label>
-                    <input type="number" step="0.01" id="price_usd" name="price_usd" required>
-                </div>
-                <div class="form-group">
-                    <label for="usps">Unique Selling Points <span class="tooltip">ⓘ<span class="tooltiptext">Comma-separated list of selling points.</span></span></label>
-                    <input type="text" id="usps" name="usps" placeholder="e.g. Waterproof, 40-hour battery" required>
-                </div>
-                <button type="submit">Add Item</button>
-            </form>
-        </div>
+            <!-- RIGHT COLUMN: Configuration & Knowledge Base -->
+            <div class="column">
 
-        <div class="section">
-            <h2>Prompt Modifiers</h2>
+                <!-- Core Settings & Hardware -->
+                <div class="section">
+                    <h2>Core Configuration <span class="tooltip">ⓘ<span class="tooltiptext">Essential settings controlling the agent's identity, primary sales approach, and hardware/API connections.</span></span></h2>
 
-            <div style="margin-bottom: 20px;">
-                <h3>Tactics Enforced <span class="tooltip">ⓘ<span class="tooltiptext">Specific psychological sales tactics the agent must employ (e.g. Assumptive close).</span></span></h3>
-                {% for tactic in tactics_enforced %}
-                <div class="list-item">
-                    <span>{{ tactic }}</span>
+                    <form method="post" action="/update_settings" style="margin-bottom: 25px; padding-bottom: 20px; border-bottom: 1px solid #e1e4e8;">
+                        <div class="dashboard-grid" style="grid-gap: 15px;">
+                            <div class="form-group">
+                                <label for="store_name">Store Name</label>
+                                <input type="text" id="store_name" name="store_name" value="{{ store_name }}" placeholder="e.g. Apex Tech Boutique" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="sales_framework">Primary Sales Framework <span class="tooltip">ⓘ<span class="tooltiptext">The overarching psychological strategy (e.g., Pattern Interrupt, Consultative, Challenger Sale).</span></span></label>
+                                <input type="text" id="sales_framework" name="sales_framework" value="{{ sales_framework }}" placeholder="e.g. Pattern Interrupt" required>
+                            </div>
+                        </div>
+                        <button type="submit">Update Store Settings</button>
+                    </form>
+
+                    <form method="post" action="/update_system_config">
+                        <h3>Hardware & API Toggles</h3>
+                        <div class="dashboard-grid" style="grid-template-columns: 2fr 1fr; grid-gap: 15px;">
+                            <div class="form-group">
+                                <label for="openai_api_key">OpenAI API Key <span class="tooltip">ⓘ<span class="tooltiptext">Required for live VLM streaming. If blank, the system falls back to mock canned responses.</span></span></label>
+                                <input type="text" id="openai_api_key" name="openai_api_key" value="{{ openai_api_key }}" placeholder="sk-...">
+                            </div>
+                            <div class="form-group">
+                                <label for="use_mock_vision">Vision Feed <span class="tooltip">ⓘ<span class="tooltiptext">False: Connect to local webcam/Pi Camera (/dev/video0). True: Run mock background loop.</span></span></label>
+                                <select id="use_mock_vision" name="use_mock_vision">
+                                    <option value="True" {% if use_mock_vision == 'True' %}selected{% endif %}>Mock (Test)</option>
+                                    <option value="False" {% if use_mock_vision == 'False' %}selected{% endif %}>Live (Camera)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button type="submit">Update System Config</button>
+                    </form>
                 </div>
-                {% endfor %}
-                <form method="post" action="/add_tactic" style="margin-top: 10px; display: flex; gap: 10px;">
-                    <input type="text" name="tactic" placeholder="Add a new tactic..." required>
-                    <button type="submit">Add</button>
-                </form>
+
+                <!-- Psychology Rules -->
+                <div class="section">
+                    <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                        <h2>Psychology Modifiers <span class="tooltip">ⓘ<span class="tooltiptext">Granular behavioral rules injected directly into the LLM system prompt.</span></span></h2>
+                    </div>
+
+                    <div class="dashboard-grid">
+                        <!-- Tactics -->
+                        <div>
+                            <h3 style="margin-top: 0; color: #27ae60;">Tactics Enforced <span class="tooltip">ⓘ<span class="tooltiptext">Specific techniques the agent MUST try to use.</span></span></h3>
+                            <div style="max-height: 200px; overflow-y: auto; margin-bottom: 10px;">
+                                {% for tactic in tactics_enforced %}
+                                <div class="list-item" style="border-left: 3px solid #27ae60;">
+                                    <span style="font-size: 0.9em;">{{ tactic }}</span>
+                                    <form method="post" action="/delete_tactic" style="margin: 0;">
+                                        <input type="hidden" name="tactic" value="{{ tactic }}">
+                                        <button type="submit" class="btn-danger" style="padding: 2px 6px; font-size: 0.75em; border-radius: 3px;" title="Delete">X</button>
+                                    </form>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            <form method="post" action="/add_tactic" class="inline-form">
+                                <div class="form-group"><input type="text" name="tactic" placeholder="Add tactic..." required style="padding: 6px;"></div>
+                                <button type="submit" style="padding: 6px 10px; background-color: #27ae60;">Add</button>
+                            </form>
+                        </div>
+
+                        <!-- Constraints -->
+                        <div>
+                            <h3 style="margin-top: 0; color: #e74c3c;">Constraints <span class="tooltip">ⓘ<span class="tooltiptext">Strict boundaries or words the agent MUST NEVER use.</span></span></h3>
+                            <div style="max-height: 200px; overflow-y: auto; margin-bottom: 10px;">
+                                {% for constraint in constraints %}
+                                <div class="list-item" style="border-left: 3px solid #e74c3c;">
+                                    <span style="font-size: 0.9em;">{{ constraint }}</span>
+                                    <form method="post" action="/delete_constraint" style="margin: 0;">
+                                        <input type="hidden" name="constraint" value="{{ constraint }}">
+                                        <button type="submit" class="btn-danger" style="padding: 2px 6px; font-size: 0.75em; border-radius: 3px;" title="Delete">X</button>
+                                    </form>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            <form method="post" action="/add_constraint" class="inline-form">
+                                <div class="form-group"><input type="text" name="constraint" placeholder="Add constraint..." required style="padding: 6px;"></div>
+                                <button type="submit" style="padding: 6px 10px; background-color: #e74c3c;">Add</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Product Inventory -->
+                <div class="section">
+                    <h2>Knowledge Base: Inventory <span class="tooltip">ⓘ<span class="tooltiptext">The catalog of products the agent is aware of and can actively pitch to customers.</span></span></h2>
+
+                    <div style="max-height: 300px; overflow-y: auto; margin-bottom: 20px; padding-right: 5px;">
+                        {% for item in items %}
+                        <div class="item-card" style="padding: 12px; border-left: 4px solid #f39c12;">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                                <div>
+                                    <strong style="color: #2c3e50; font-size: 1.1em;">{{ item.product_name }}</strong> <span style="color: #27ae60; font-weight: bold;">${{ item.price_usd }}</span>
+                                    <ul style="margin: 8px 0 0 0; padding-left: 20px; font-size: 0.9em; color: #455a64;">
+                                        {% for usp in item.unique_selling_points %}
+                                        <li>{{ usp }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                                <form method="post" action="/delete_item" style="margin: 0;">
+                                    <input type="hidden" name="product_name" value="{{ item.product_name }}">
+                                    <button type="submit" class="btn-danger" style="padding: 4px 8px; font-size: 0.8em;" title="Delete Item">Delete</button>
+                                </form>
+                            </div>
+                        </div>
+                        {% else %}
+                        <p style="color: #7f8c8d; font-style: italic;">No inventory items added yet.</p>
+                        {% endfor %}
+                    </div>
+
+                    <div style="background-color: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e1e4e8;">
+                        <h3 style="margin-top: 0;">Add New Product</h3>
+                        <form method="post" action="/add_item">
+                            <div class="dashboard-grid" style="grid-template-columns: 3fr 1fr; grid-gap: 10px; margin-bottom: 10px;">
+                                <div class="form-group" style="margin-bottom: 0;">
+                                    <input type="text" id="product_name" name="product_name" placeholder="Product Name" required>
+                                </div>
+                                <div class="form-group" style="margin-bottom: 0;">
+                                    <input type="number" step="0.01" id="price_usd" name="price_usd" placeholder="Price $" required>
+                                </div>
+                            </div>
+                            <div class="form-group" style="margin-bottom: 10px;">
+                                <input type="text" id="usps" name="usps" placeholder="Unique Selling Points (comma separated e.g., Waterproof, 40hr battery)" required>
+                            </div>
+                            <button type="submit" style="background-color: #f39c12; color: #fff;">+ Add Item to Database</button>
+                        </form>
+                    </div>
+                </div>
+
             </div>
-
-            <div>
-                <h3>Constraints <span class="tooltip">ⓘ<span class="tooltiptext">Rules the agent must strictly follow (e.g. Never say 'Welcome').</span></span></h3>
-                {% for constraint in constraints %}
-                <div class="list-item">
-                    <span>{{ constraint }}</span>
-                </div>
-                {% endfor %}
-                <form method="post" action="/add_constraint" style="margin-top: 10px; display: flex; gap: 10px;">
-                    <input type="text" name="constraint" placeholder="Add a new constraint..." required>
-                    <button type="submit">Add</button>
-                </form>
-            </div>
-        </div>
-
-        <div class="section">
-            <h2>Simulate Detection <span class="tooltip">ⓘ<span class="tooltiptext">Test the agent's real-time response generation based on the current configuration.</span></span></h2>
-            <form method="post" action="/simulate_detection">
-                <div class="form-group">
-                    <label for="attributes">Customer Attributes (comma separated)</label>
-                    <input type="text" id="attributes" name="attributes" value="navy blue windbreaker, baseball cap, holding coffee" required>
-                </div>
-                <button type="submit">Simulate Detection</button>
-            </form>
-            {% if simulated_response %}
-            <div style="margin-top: 15px; padding: 10px; border-left: 4px solid #007bff; background: #e9ecef;">
-                <strong>Bot Response:</strong>
-                <p style="margin: 5px 0 0 0;">{{ simulated_response }}</p>
-            </div>
-            {% endif %}
         </div>
     </div>
+    <script>
+        const ctx = document.getElementById('interactionChart').getContext('2d');
+        const chartLabels = {{ chart_labels | safe }};
+        const chartData = {{ chart_data | safe }};
+
+        const interactionChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: chartLabels,
+                datasets: [{
+                    label: 'Interactions per Day',
+                    data: chartData,
+                    borderColor: '#3498db',
+                    backgroundColor: 'rgba(52, 152, 219, 0.2)',
+                    borderWidth: 2,
+                    tension: 0.3,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        }
+                    }
+                }
+            }
+        });
+
+        const ctx2 = document.getElementById('frameworkChart').getContext('2d');
+        const frameworkLabels = {{ framework_labels | safe }};
+        const frameworkTotals = {{ framework_totals | safe }};
+        const frameworkLeads = {{ framework_leads | safe }};
+
+        const frameworkChart = new Chart(ctx2, {
+            type: 'bar',
+            data: {
+                labels: frameworkLabels,
+                datasets: [
+                    {
+                        label: 'Total Pits',
+                        data: frameworkTotals,
+                        backgroundColor: 'rgba(149, 165, 166, 0.6)',
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'Qualified Leads',
+                        data: frameworkLeads,
+                        backgroundColor: 'rgba(39, 174, 96, 0.8)',
+                        borderWidth: 1
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        }
+                    }
+                }
+            }
+        });
+    </script>
 </body>
 </html>

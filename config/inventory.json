@@ -1,5 +1,5 @@
 {
-  "store_name": "Apex Tech Boutique",
+  "store_name": "Integration Test Store",
   "items": [
     {
       "product_name": "Awesome New Jacket",
@@ -7,6 +7,221 @@
       "unique_selling_points": [
         "Waterproof",
         "Warm"
+      ]
+    },
+    {
+      "product_name": "Test Item",
+      "price_usd": 99.99,
+      "unique_selling_points": [
+        "Point 1"
+      ]
+    },
+    {
+      "product_name": "Test Item",
+      "price_usd": 99.99,
+      "unique_selling_points": [
+        "Point 1",
+        "Point 2"
+      ]
+    },
+    {
+      "product_name": "Test Item",
+      "price_usd": 99.99,
+      "unique_selling_points": [
+        "Point 1",
+        "Point 2"
+      ]
+    },
+    {
+      "product_name": "Test Item",
+      "price_usd": 99.99,
+      "unique_selling_points": [
+        "Point 1",
+        "Point 2"
+      ]
+    },
+    {
+      "product_name": "Test Item",
+      "price_usd": 99.99,
+      "unique_selling_points": [
+        "Point 1",
+        "Point 2"
+      ]
+    },
+    {
+      "product_name": "Test Item",
+      "price_usd": 99.99,
+      "unique_selling_points": [
+        "Point 1",
+        "Point 2"
+      ]
+    },
+    {
+      "product_name": "Test Item",
+      "price_usd": 99.99,
+      "unique_selling_points": [
+        "Point 1",
+        "Point 2"
+      ]
+    },
+    {
+      "product_name": "Test Item",
+      "price_usd": 99.99,
+      "unique_selling_points": [
+        "Point 1",
+        "Point 2"
+      ]
+    },
+    {
+      "product_name": "Test Item",
+      "price_usd": 99.99,
+      "unique_selling_points": [
+        "Point 1",
+        "Point 2"
+      ]
+    },
+    {
+      "product_name": "Test Item",
+      "price_usd": 99.99,
+      "unique_selling_points": [
+        "Point 1",
+        "Point 2"
+      ]
+    },
+    {
+      "product_name": "Test Item",
+      "price_usd": 99.99,
+      "unique_selling_points": [
+        "Point 1",
+        "Point 2"
+      ]
+    },
+    {
+      "product_name": "Test Item",
+      "price_usd": 99.99,
+      "unique_selling_points": [
+        "Point 1",
+        "Point 2"
+      ]
+    },
+    {
+      "product_name": "Test Item",
+      "price_usd": 99.99,
+      "unique_selling_points": [
+        "Point 1",
+        "Point 2"
+      ]
+    },
+    {
+      "product_name": "Test Item",
+      "price_usd": 99.99,
+      "unique_selling_points": [
+        "Point 1",
+        "Point 2"
+      ]
+    },
+    {
+      "product_name": "Test Item",
+      "price_usd": 99.99,
+      "unique_selling_points": [
+        "Point 1",
+        "Point 2"
+      ]
+    },
+    {
+      "product_name": "Test Item",
+      "price_usd": 99.99,
+      "unique_selling_points": [
+        "Point 1",
+        "Point 2"
+      ]
+    },
+    {
+      "product_name": "Test Item",
+      "price_usd": 99.99,
+      "unique_selling_points": [
+        "Point 1",
+        "Point 2"
+      ]
+    },
+    {
+      "product_name": "Test Item",
+      "price_usd": 99.99,
+      "unique_selling_points": [
+        "Point 1",
+        "Point 2"
+      ]
+    },
+    {
+      "product_name": "Test Item",
+      "price_usd": 99.99,
+      "unique_selling_points": [
+        "Point 1",
+        "Point 2"
+      ]
+    },
+    {
+      "product_name": "Test Item",
+      "price_usd": 99.99,
+      "unique_selling_points": [
+        "Point 1",
+        "Point 2"
+      ]
+    },
+    {
+      "product_name": "Test Item",
+      "price_usd": 99.99,
+      "unique_selling_points": [
+        "Point 1",
+        "Point 2"
+      ]
+    },
+    {
+      "product_name": "Test Item",
+      "price_usd": 99.99,
+      "unique_selling_points": [
+        "Point 1",
+        "Point 2"
+      ]
+    },
+    {
+      "product_name": "Test Item",
+      "price_usd": 99.99,
+      "unique_selling_points": [
+        "Point 1",
+        "Point 2"
+      ]
+    },
+    {
+      "product_name": "Test Item",
+      "price_usd": 99.99,
+      "unique_selling_points": [
+        "Point 1",
+        "Point 2"
+      ]
+    },
+    {
+      "product_name": "Test Item",
+      "price_usd": 99.99,
+      "unique_selling_points": [
+        "Point 1",
+        "Point 2"
+      ]
+    },
+    {
+      "product_name": "Test Item",
+      "price_usd": 99.99,
+      "unique_selling_points": [
+        "Point 1",
+        "Point 2"
+      ]
+    },
+    {
+      "product_name": "Test Item",
+      "price_usd": 99.99,
+      "unique_selling_points": [
+        "Point 1",
+        "Point 2"
       ]
     }
   ]

@@ -1,2 +1,12 @@
 __pycache__
 *.pyc
+sirens.db
+system_config.json
+.coverage
+PR_DRAFT.md
+RELEASE_REPORT_v0.3.0.md
+INTEGRATION_TEST_REPORT.md
+PROPOSAL_v0.2.0.md
+*.db-wal
+*.db-shm
+yolo11n.pt

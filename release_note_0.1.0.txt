@@ -1,0 +1,14 @@
+# Release v0.1.0
+
+## Core Features
+*   **Project Initialization**: Set up the core asynchronous Python architecture to handle non-blocking concurrent events.
+*   **Git Submodules**: Added `vendor/piper` for local low-latency TTS capabilities and `vendor/yolov11-edge` for lightweight hardware tracking metrics.
+*   **Docker Containerization**: Provisioned a `hub` FastAPI dashboard container and an isolated `kiosk` pipeline edge-execution container, bridging communications via a `redis` pub-sub container.
+
+## Documentation
+*   Established standard repository blueprints: `README.md`, `DEPLOY.md`, `ROADMAP.md`, `TODO.md`, `HANDOFF.md`, and `VERSION.md`.
+
+## Integration Testing
+*   Added E2E integration validations mimicking message pipelines through the core architecture without triggering live hardware API loops.
+
+*Prepared for merge to main.*

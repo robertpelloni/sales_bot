@@ -1,0 +1,21 @@
+# Performance Benchmark: v0.1.0
+
+## Target SLA
+- 95th Percentile Latency: < 200ms
+
+## Results
+- Total Requests: 1000
+- Successful (200 OK): 1000
+- Failed/Errors: 0
+
+## Latency Percentiles (ms)
+- p50: 479.44 ms
+- p90: 2022.20 ms
+- p95: 3449.73 ms
+- p99: 4962.64 ms
+- Max: 5534.93 ms
+- Min: 24.44 ms
+- Mean: 882.01 ms
+
+## SLA Status
+❌ FAIL: 95th percentile exceeds 200ms.

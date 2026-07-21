@@ -238,10 +238,33 @@ jules remote sync
 jules remote new --task "Build Project Sirens low-latency vision-sales platform" --file-scope src/,config/
 Jules will pull down the repo, spin up its sandbox, map out the system architecture, write the asynchronous pipeline code utilizing your submodules, and output a completed Pull Request for review.
 
-## Current Implementation Status (Version 0.2.0)
-The repository currently implements Phase 1 and Phase 2 of the roadmap:
-- **Hub Dashboard UI**: Fully interactive FastAPI configuration hub for inventory, prompt settings, and system-level API configuration.
+## Current Implementation Status (Version 0.3.0)
+The repository currently implements Phase 1 and Phase 2 of the roadmap, and is beginning Phase 3 CRM integration:
+- **Hub Dashboard UI**: Fully interactive FastAPI configuration hub redesigned with a single-page grid layout prioritizing high-value features. Features robust interactive tooltips, data encapsulation, and live analytics feeds.
+- **Interaction Logging (CRM)**: Live interactions are persisted and streamed using SQLite (`sirens.db`) via SQLAlchemy, hooking into the dashboard to provide an interactive feed of generated responses.
 - **Edge Vision System**: Features a mock mode and a real `cv2.VideoCapture` hardware-connected implementation utilizing YOLO object tracking, abiding by a strict 60-second in-memory-only retention policy for bounding boxes.
-- **VLM Pipeline**: Integrated with the OpenAI SDK to stream interactions directly to a mock Piper TTS pipeline via stdin subprocess pipes.
+- **VLM Pipeline**: Integrated with the OpenAI SDK to stream interactions directly to a mock Piper TTS pipeline via stdin subprocess pipes. End-to-end integration tests are implemented utilizing a mock Redis broker.
 
 Ensure `OPENAI_API_KEY` is provided to the system configuration panel to generate live responses.
+
+### Key API Endpoints & Usage Example
+
+The Hub exposes REST endpoints that developers can use to interact with the core VLM logic and CRM tracking systems independently of the HTML dashboard.
+
+```bash
+# Example 1: Triggering a headless simulation via the CLI
+curl -X POST http://localhost:8000/simulate_detection \
+     -H "Content-Type: application/x-www-form-urlencoded" \
+     -d "attributes=wearing sunglasses, looking at watches" \
+     -d "temperature=0.7"
+
+# Example 2: Manually logging an interaction to the CRM database
+curl -X POST http://localhost:8000/api/log_interaction \
+     -H "Content-Type: application/json" \
+     -d '{"attributes": "red hat", "response": "Testing webhook integration."}'
+```
+
+- **`GET /`**: Renders the main unified HTML dashboard with current interaction logs, visual interaction frequency charts, and system configurations.
+- **`POST /api/log_interaction`**: Webhook endpoint for the asynchronous VLM edge client to post real-time dialogue and customer attributes to the central SQLite tracking database. Returns an HTTP 500 error if database logging fails.
+- **`POST /simulate_detection`**: Takes simulated customer attribute arrays, temperature, and prompt overrides, passing them directly to the `process_vlm_stream` core without requiring Redis infrastructure, surfacing the psychological response output directly in the UI for rapid A/B testing and review.
+- **Error Handling Strategy**: The Hub API leverages standard FastAPI `HTTPException` blocks for JSON webhooks (e.g., `/api/log_interaction`) and passes safe `error_message` template variables to the frontend for any HTML form submission failures (such as configuration I/O errors or validation drops), ensuring users always receive visible UI feedback without silently failing.

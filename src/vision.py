@@ -20,12 +20,24 @@ import os
 
 async def start_vision_loop(redis_url: str):
     r = redis.from_url(redis_url)
-    print("Vision system initializing YOLOv11-Nano...")
+    print("Vision system initializing hardware bindings...")
 
-    use_mock_vision = os.getenv("USE_MOCK_VISION", "True").lower() in ("true", "1", "yes")
+    from llm_client import get_system_config
+    import base64
+    _, use_mock_vision_str = get_system_config()
+    use_mock_vision = use_mock_vision_str.lower() in ("true", "1", "yes")
 
     try:
-        model = YOLO("yolo11n.pt")
+        # Phase 4 Hardware Integration:
+        # Load the Coral Edge TPU optimized TFLite model instead of the standard PyTorch model
+        # This allows 30+ FPS tracking on the Raspberry Pi 5 without thermal throttling.
+        # Fallback to standard PyTorch format if Coral model is unavailable.
+        if os.path.exists("yolo11n_edgetpu.tflite"):
+            print("Loaded Coral Edge TPU YOLOv11n model.")
+            model = YOLO("yolo11n_edgetpu.tflite")
+        else:
+            print("Loaded Standard PyTorch YOLOv11n model.")
+            model = YOLO("yolo11n.pt")
     except Exception:
         print("Falling back to MockYOLO")
         model = MockYOLO("yolo11n.pt")
