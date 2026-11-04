@@ -1,0 +1,19 @@
+# TODO
+
+## Immediate (Completed in 0.6.0)
+- [x] Redesign Hub Dashboard into a consolidated, intuitive single-page layout with high-value prioritization.
+- [x] Implement Desktop System Tray controller (`src/tray_app.py`) with process control and headless fallback.
+- [x] Add server health and graceful shutdown endpoints (`GET /api/status`, `POST /api/server/shutdown`).
+- [x] Add modular server management scripts (`scripts/run_hub.sh`, `scripts/run_kiosk.sh`, `scripts/run_tray.sh`, `scripts/manage_servers.sh`).
+- [x] Modernize FastAPI startup events to `@asynccontextmanager lifespan`.
+- [x] Fix Python 3.12 `datetime.datetime.utcnow()` deprecations across backend modules.
+- [x] Implement comprehensive unit tests in `tests/test_tray.py` and visual Playwright verification.
+
+## Short-Term (0.7.0)
+- [ ] Add real-time WebSocket connection to `hub/main.py` for live event broadcasting to UI without polling.
+- [ ] Implement Coral Edge TPU compiled TFLite model runner for YOLOv11n in `src/vision.py`.
+- [ ] Add dynamic discount rule builder to the Inventory panel for automated volume pricing.
+
+## Long-Term (1.0.0+)
+- [ ] Multi-kiosk fleet synchronization via central Redis clustering or gRPC mesh.
+- [ ] Automated A/B test convergence engine using multi-armed bandits on customer dwell time.

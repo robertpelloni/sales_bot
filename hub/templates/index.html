@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Sirens | Autonomous Retail Intelligence Hub</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --bg-body: #f8fafc;
+            --bg-card: #ffffff;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --success: #16a34a;
+            --danger: #dc2626;
+            --warning: #d97706;
+            --info: #0284c7;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 24px;
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 1440px;
+            margin: 0 auto;
+        }
+
+        /* Top Header & System Status Bar */
+        .header-bar {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .header-title {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .header-title h1 {
+            margin: 0;
+            font-size: 1.6em;
+            color: var(--text-main);
+            letter-spacing: -0.5px;
+        }
+
+        .system-status-group {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.85em;
+            font-weight: 600;
+            padding: 5px 12px;
+            border-radius: 9999px;
+            background: #f1f5f9;
+            color: var(--text-muted);
+            border: 1px solid var(--border);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--success);
+        }
+
+        .status-dot.warning { background: var(--warning); }
+        .status-dot.danger { background: var(--danger); }
+
+        /* Unified Grid */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-gap: 24px;
+        }
+
+        .full-width {
+            grid-column: 1 / -1;
+        }
+
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card-high-value {
+            border: 2px solid #93c5fd;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.08);
+            background: #ffffff;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 18px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .card-header h2 {
+            margin: 0;
+            font-size: 1.25em;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Tooltip styling */
+        .tooltip {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: help;
+            color: var(--primary);
+            font-size: 0.85em;
+            font-weight: bold;
+        }
+
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 280px;
+            background-color: #1e293b;
+            color: #ffffff;
+            text-align: left;
+            border-radius: 6px;
+            padding: 10px 14px;
+            position: absolute;
+            z-index: 50;
+            bottom: 130%;
+            left: 50%;
+            transform: translateX(-50%);
+            opacity: 0;
+            transition: opacity 0.2s;
+            font-size: 0.85em;
+            font-weight: normal;
+            line-height: 1.4;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+            pointer-events: none;
+        }
+
+        .tooltip .tooltiptext::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -6px;
+            border-width: 6px;
+            border-style: solid;
+            border-color: #1e293b transparent transparent transparent;
+        }
+
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        /* Forms & Inputs */
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            font-size: 0.9em;
+            margin-bottom: 6px;
+            color: var(--text-main);
+        }
+
+        .desc {
+            font-size: 0.8em;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+
+        input[type="text"], input[type="number"], select, textarea {
+            width: 100%;
+            padding: 9px 12px;
+            box-sizing: border-box;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-family: inherit;
+            font-size: 0.9em;
+            color: var(--text-main);
+            background: #ffffff;
+            transition: border-color 0.15s, box-shadow 0.15s;
+        }
+
+        input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+        }
+
+        button {
+            padding: 9px 16px;
+            background-color: var(--primary);
+            color: #ffffff;
+            border: none;
+            cursor: pointer;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.9em;
+            transition: background-color 0.15s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        button:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .btn-danger {
+            background-color: var(--danger);
+        }
+
+        .btn-danger:hover {
+            background-color: #b91c1c;
+        }
+
+        .btn-success {
+            background-color: var(--success);
+        }
+
+        .btn-success:hover {
+            background-color: #15803d;
+        }
+
+        .btn-secondary {
+            background-color: #64748b;
+        }
+
+        .btn-secondary:hover {
+            background-color: #475569;
+        }
+
+        /* Feeds & Scrollables */
+        .scrollable-feed {
+            max-height: 480px;
+            overflow-y: auto;
+            padding-right: 6px;
+        }
+
+        .scrollable-feed::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .scrollable-feed::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+
+        .item-card {
+            border: 1px solid var(--border);
+            padding: 14px;
+            margin-bottom: 12px;
+            border-radius: 8px;
+            background: #ffffff;
+            transition: border-color 0.15s;
+        }
+
+        .item-card:hover {
+            border-color: #94a3b8;
+        }
+
+        .lead-card {
+            border-left: 4px solid var(--success);
+        }
+
+        .response-quote {
+            margin: 8px 0;
+            padding: 10px 14px;
+            border-left: 3px solid var(--primary);
+            background: #eff6ff;
+            border-radius: 0 6px 6px 0;
+            font-style: italic;
+            font-size: 0.95em;
+            color: #1e3a8a;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 9999px;
+            font-size: 0.75em;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .badge-lead {
+            background: #dcfce7;
+            color: #15803d;
+            border: 1px solid #bbf7d0;
+        }
+
+        .badge-sim {
+            background: #e0f2fe;
+            color: #0369a1;
+            border: 1px solid #bae6fd;
+        }
+
+        .alert-banner {
+            background-color: #fee2e2;
+            border-left: 4px solid var(--danger);
+            color: #991b1b;
+            padding: 12px 16px;
+            margin-bottom: 20px;
+            border-radius: 6px;
+            font-weight: 500;
+        }
+
+        /* Sub-grid layouts */
+        .split-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .split-3 {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 16px;
+        }
+
+        @media (max-width: 1024px) {
+            .dashboard-grid, .split-2, .split-3 {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- TOP HEADER & CONTROLS -->
+        <header class="header-bar">
+            <div class="header-title">
+                <h1>⚡ Project Sirens <span style="font-weight: 300; font-size: 0.75em; color: var(--text-muted);">| Autonomous Retail Engine</span></h1>
+            </div>
+            <div class="system-status-group">
+                <div class="status-pill">
+                    <span class="status-dot"></span>
+                    <span>Hub v0.6.0 Online</span>
+                    <span class="tooltip">ⓘ<span class="tooltiptext">FastAPI asynchronous control server running on port 8000.</span></span>
+                </div>
+                <div class="status-pill">
+                    <span class="status-dot {% if use_mock_vision == 'True' %}warning{% endif %}"></span>
+                    <span>Vision: {% if use_mock_vision == 'True' %}Mock Mode{% else %}Cam ({{ camera_index }}){% endif %}</span>
+                    <span class="tooltip">ⓘ<span class="tooltiptext">Vision status: Mock Mode simulates passersby without hardware; Live mode reads from /dev/video.</span></span>
+                </div>
+                <div class="status-pill">
+                    <span class="status-dot {% if not openai_api_key %}danger{% endif %}"></span>
+                    <span>LLM Engine: {% if openai_api_key %}Ready (VLM API){% else %}Missing Key{% endif %}</span>
+                    <span class="tooltip">ⓘ<span class="tooltiptext">Streaming VLM Frontier model status. Requires an OpenAI API Key configured below.</span></span>
+                </div>
+                <form method="post" action="/api/server/shutdown" onsubmit="return confirm('Gracefully shutdown Hub server process?');" style="margin: 0;">
+                    <button type="submit" class="btn-danger" style="padding: 6px 12px; font-size: 0.8em;" title="Stop the server safely">
+                        Quit Server ⏻
+                    </button>
+                </form>
+            </div>
+        </header>
+
+        {% if error_message %}
+        <div class="alert-banner">
+            ⚠️ <strong>Error:</strong> {{ error_message }}
+        </div>
+        {% endif %}
+
+        <!-- MAIN TWO-COLUMN DASHBOARD GRID -->
+        <main class="dashboard-grid">
+
+            <!-- HIGH-PRIORITY COLUMN 1: LIVE SIMULATION & REAL-TIME RESPONSE GENERATION -->
+            <div class="card card-high-value">
+                <div class="card-header">
+                    <h2>🎯 Simulation & Cold-Open Engine <span class="badge badge-sim">High Value</span></h2>
+                    <span class="tooltip">ⓘ<span class="tooltiptext">The core real-time behavioral testing studio. Test customer detections directly against the dynamic prompt rules and inventory without needing physical passersby.</span></span>
+                </div>
+
+                <form method="post" action="/simulate_detection">
+                    <div class="form-group">
+                        <label for="attributes">Simulated Customer Profile Attributes
+                            <span class="tooltip">ⓘ<span class="tooltiptext">Macro visual attributes detected by YOLOv11n (e.g. clothing color, carried bags, posture). Strict privacy constraint: no facial tags or brand names.</span></span>
+                        </label>
+                        <div class="desc">Detected visual features sent into the frontier VLM context prompt.</div>
+                        <input type="text" id="attributes" name="attributes" value="navy blue windbreaker, baseball cap, holding coffee" required>
+                    </div>
+
+                    <div class="split-2">
+                        <div class="form-group">
+                            <label for="system_prompt_override">Prompt Override (A/B Test)
+                                <span class="tooltip">ⓘ<span class="tooltiptext">Optional: enter a bespoke system prompt to override the store's configured psychology for rapid A/B testing.</span></span>
+                            </label>
+                            <input type="text" id="system_prompt_override" name="system_prompt_override" placeholder="Leave empty to use active store rules...">
+                        </div>
+                        <div class="form-group">
+                            <label for="temperature">VLM Creativity (Temperature: 0.0 - 1.5)
+                                <span class="tooltip">ⓘ<span class="tooltiptext">Controls the randomness of cold open pitches. 0.2 = deterministic and focused; 0.8 = charismatic and adaptive.</span></span>
+                            </label>
+                            <input type="number" id="temperature" name="temperature" step="0.1" min="0.0" max="2.0" value="0.8">
+                        </div>
+                    </div>
+
+                    <button type="submit" style="width: 100%; font-size: 1.05em; padding: 12px;">
+                        ▶ Run Instant Detection & Generate Pitch
+                    </button>
+                </form>
+
+                {% if simulated_response %}
+                <div style="margin-top: 20px; padding: 16px; border-radius: 8px; background: #ffffff; border: 1px solid #bfdbfe; box-shadow: 0 2px 4px rgba(37,99,235,0.06);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <strong style="color: var(--primary); font-size: 0.95em;">Generated Autonomous Pitch:</strong>
+                        <span class="badge badge-sim">Simulated Output</span>
+                    </div>
+                    <div class="response-quote">"{{ simulated_response }}"</div>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- HIGH-PRIORITY COLUMN 2: LIVE INTERACTION LOG & ANALYTICS -->
+            <div class="card card-high-value">
+                <div class="card-header">
+                    <h2>📊 Live CRM Feed & Analytics <span class="badge badge-lead">Live SQLite Stream</span></h2>
+                    <span class="tooltip">ⓘ<span class="tooltiptext">Real-time log of in-store customer engagements persisted in sirens.db. Allows qualifying leads, rating responses, and logging sales staff notes.</span></span>
+                </div>
+
+                <!-- Visual Charts Sub-Grid -->
+                <div class="split-2" style="margin-bottom: 16px;">
+                    <div style="background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid var(--border);">
+                        <div style="font-size: 0.8em; font-weight: 600; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase;">
+                            Volume (Last 7 Days)
+                        </div>
+                        <canvas id="interactionChart" width="100%" height="85"></canvas>
+                    </div>
+                    <div style="background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid var(--border);">
+                        <div style="font-size: 0.8em; font-weight: 600; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase;">
+                            Framework Effectiveness
+                        </div>
+                        <canvas id="frameworkChart" width="100%" height="85"></canvas>
+                    </div>
+                </div>
+
+                <!-- Scrollable CRM Stream -->
+                <div class="scrollable-feed">
+                    {% for interaction in interactions %}
+                    <div class="item-card {% if interaction.is_lead %}lead-card{% endif %}">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px;">
+                            <div>
+                                <span style="font-weight: 600; color: var(--text-main); font-size: 0.9em;">Detected: {{ interaction.attributes }}</span>
+                                {% if interaction.is_lead %}
+                                <span class="badge badge-lead" style="margin-left: 6px;">Qualified Lead</span>
+                                {% endif %}
+                            </div>
+                            <span style="font-size: 0.75em; color: var(--text-muted); white-space: nowrap;">
+                                {{ interaction.timestamp.strftime('%Y-%m-%d %H:%M') }}
+                            </span>
+                        </div>
+
+                        <div class="response-quote">"{{ interaction.response }}"</div>
+
+                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 0.8em; color: var(--text-muted); margin-bottom: 8px;">
+                            <span>Framework: <strong>{{ interaction.sales_framework }}</strong></span>
+                            {% if interaction.tts_latency_ms > 0 %}
+                            <span>Piper TTS Latency: <strong>{{ interaction.tts_latency_ms }}ms</strong></span>
+                            {% endif %}
+                        </div>
+
+                        <!-- CRM Actions: Lead Toggle, Feedback Rating, Note Attachment -->
+                        <div style="background: #f1f5f9; padding: 8px 12px; border-radius: 6px; display: flex; flex-direction: column; gap: 8px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <form method="post" action="/mark_lead/{{ interaction.id }}" style="margin: 0;">
+                                    <input type="hidden" name="is_lead" value="{{ 'False' if interaction.is_lead else 'True' }}">
+                                    <button type="submit" style="padding: 4px 10px; font-size: 0.8em; background-color: {% if interaction.is_lead %}#64748b{% else %}var(--success){% endif %};">
+                                        {% if interaction.is_lead %}✓ Remove Lead Flag{% else %}★ Flag as Qualified Lead{% endif %}
+                                    </button>
+                                </form>
+
+                                <form method="post" action="/submit_feedback/{{ interaction.id }}" style="margin: 0; display: flex; align-items: center; gap: 6px;">
+                                    <span style="font-size: 0.8em; color: var(--text-muted);">Pitch Rating:</span>
+                                    <button type="submit" name="feedback_score" value="1" style="padding: 2px 8px; font-size: 0.85em; background-color: {% if interaction.feedback_score == 1 %}var(--danger){% else %}#cbd5e1{% endif %};" title="Poor pitch">👎</button>
+                                    <button type="submit" name="feedback_score" value="5" style="padding: 2px 8px; font-size: 0.85em; background-color: {% if interaction.feedback_score == 5 %}var(--success){% else %}#cbd5e1{% endif %};" title="Effective pitch">👍</button>
+                                </form>
+                            </div>
+
+                            <form method="post" action="/update_follow_up/{{ interaction.id }}" style="display: flex; gap: 6px; margin: 0;">
+                                <input type="text" name="follow_up_notes" value="{{ interaction.follow_up_notes }}" placeholder="Add staff follow-up note..." style="padding: 5px 8px; font-size: 0.85em; flex-grow: 1;">
+                                <button type="submit" class="btn-secondary" style="padding: 5px 10px; font-size: 0.8em;">Save Note</button>
+                            </form>
+                        </div>
+                    </div>
+                    {% else %}
+                    <p style="color: var(--text-muted); font-style: italic; text-align: center; padding: 24px;">No customer interactions logged yet. Run a simulation or connect hardware vision!</p>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- CONFIGURATION & KNOWLEDGE BASE ROW (CONSOLIDATED) -->
+
+            <!-- KNOWLEDGE BASE: PRODUCT INVENTORY -->
+            <div class="card">
+                <div class="card-header">
+                    <h2>📦 Product Inventory & Pitch Assets <span class="badge" style="background: #fef3c7; color: #b45309; border: 1px solid #fde68a;">Catalog</span></h2>
+                    <span class="tooltip">ⓘ<span class="tooltiptext">The store catalog available for the agent to promote. The agent selects items matching visual cues and weaves Unique Selling Points into pitches.</span></span>
+                </div>
+
+                <div class="scrollable-feed" style="max-height: 250px; margin-bottom: 16px;">
+                    {% for item in items %}
+                    <div class="item-card" style="border-left: 3px solid #f59e0b; padding: 10px 12px;">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                            <div>
+                                <strong style="color: var(--text-main);">{{ item.product_name }}</strong>
+                                <span style="color: var(--success); font-weight: bold; margin-left: 8px;">${{ item.price_usd }}</span>
+                                <ul style="margin: 4px 0 0 0; padding-left: 18px; font-size: 0.82em; color: var(--text-muted);">
+                                    {% for usp in item.unique_selling_points %}
+                                    <li>{{ usp }}</li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                            <form method="post" action="/delete_item" style="margin: 0;">
+                                <input type="hidden" name="product_name" value="{{ item.product_name }}">
+                                <button type="submit" class="btn-danger" style="padding: 3px 8px; font-size: 0.75em;" title="Delete product">✕</button>
+                            </form>
+                        </div>
+                    </div>
+                    {% else %}
+                    <p style="color: var(--text-muted); font-style: italic;">No items currently in inventory.</p>
+                    {% endfor %}
+                </div>
+
+                <!-- Add Product Form -->
+                <form method="post" action="/add_item" style="background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid var(--border);">
+                    <div style="font-weight: 600; font-size: 0.85em; margin-bottom: 8px; color: var(--text-main);">+ Add New Inventory Item</div>
+                    <div class="split-2" style="margin-bottom: 8px;">
+                        <input type="text" name="product_name" placeholder="Product Name (e.g. AeroFoam Headphones)" required>
+                        <input type="number" step="0.01" name="price_usd" placeholder="Price (USD)" required>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="text" name="usps" placeholder="Unique Selling Points (comma separated e.g. 40hr battery, ANC)" required style="flex-grow: 1;">
+                        <button type="submit" style="background-color: #f59e0b; white-space: nowrap;">Add Item</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- AGENT SALES PSYCHOLOGY & SYSTEM SETTINGS -->
+            <div class="card">
+                <div class="card-header">
+                    <h2>🧠 Sales Psychology & System Config</h2>
+                    <span class="tooltip">ⓘ<span class="tooltiptext">Fine-tune the retail behavioral framework, mandatory conversion tactics, privacy constraints, and underlying edge hardware settings.</span></span>
+                </div>
+
+                <!-- Store & Framework Form -->
+                <form method="post" action="/update_settings" style="margin-bottom: 16px;">
+                    <div class="split-2">
+                        <div class="form-group" style="margin-bottom: 8px;">
+                            <label for="store_name">Store Name
+                                <span class="tooltip">ⓘ<span class="tooltiptext">Business identifier woven into greeting context.</span></span>
+                            </label>
+                            <input type="text" id="store_name" name="store_name" value="{{ store_name }}" required>
+                        </div>
+                        <div class="form-group" style="margin-bottom: 8px;">
+                            <label for="sales_framework">Primary Sales Framework
+                                <span class="tooltip">ⓘ<span class="tooltiptext">The overarching psychological approach (e.g. Pattern Interrupt Cold-Open, Challenger Sale, Consultative).</span></span>
+                            </label>
+                            <input type="text" id="sales_framework" name="sales_framework" value="{{ sales_framework }}" required>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn-secondary" style="width: 100%; padding: 6px; font-size: 0.85em;">Save Store Identity & Framework</button>
+                </form>
+
+                <!-- Tactics & Constraints Consolidated Grid -->
+                <div class="split-2" style="margin-bottom: 16px;">
+                    <!-- Tactics -->
+                    <div>
+                        <div style="font-size: 0.85em; font-weight: 600; color: var(--success); margin-bottom: 6px;">
+                            Tactics Enforced
+                            <span class="tooltip">ⓘ<span class="tooltiptext">Techniques the agent must actively weave into each speaking turn.</span></span>
+                        </div>
+                        <div style="max-height: 120px; overflow-y: auto; margin-bottom: 8px; border: 1px solid var(--border); border-radius: 6px; padding: 4px;">
+                            {% for tactic in tactics_enforced %}
+                            <div style="display: flex; justify-content: space-between; align-items: center; padding: 4px 6px; font-size: 0.8em; border-bottom: 1px solid #f1f5f9;">
+                                <span>{{ tactic }}</span>
+                                <form method="post" action="/delete_tactic" style="margin: 0;">
+                                    <input type="hidden" name="tactic" value="{{ tactic }}">
+                                    <button type="submit" class="btn-danger" style="padding: 1px 4px; font-size: 0.7em;">✕</button>
+                                </form>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <form method="post" action="/add_tactic" style="display: flex; gap: 4px;">
+                            <input type="text" name="tactic" placeholder="Add tactic..." required style="padding: 4px 6px; font-size: 0.8em;">
+                            <button type="submit" class="btn-success" style="padding: 4px 8px; font-size: 0.8em;">+</button>
+                        </form>
+                    </div>
+
+                    <!-- Constraints -->
+                    <div>
+                        <div style="font-size: 0.85em; font-weight: 600; color: var(--danger); margin-bottom: 6px;">
+                            Privacy & Behavioral Constraints
+                            <span class="tooltip">ⓘ<span class="tooltiptext">Hard boundary rules preventing creepiness, brand callouts, or speech run-ons.</span></span>
+                        </div>
+                        <div style="max-height: 120px; overflow-y: auto; margin-bottom: 8px; border: 1px solid var(--border); border-radius: 6px; padding: 4px;">
+                            {% for constraint in constraints %}
+                            <div style="display: flex; justify-content: space-between; align-items: center; padding: 4px 6px; font-size: 0.8em; border-bottom: 1px solid #f1f5f9;">
+                                <span>{{ constraint }}</span>
+                                <form method="post" action="/delete_constraint" style="margin: 0;">
+                                    <input type="hidden" name="constraint" value="{{ constraint }}">
+                                    <button type="submit" class="btn-danger" style="padding: 1px 4px; font-size: 0.7em;">✕</button>
+                                </form>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <form method="post" action="/add_constraint" style="display: flex; gap: 4px;">
+                            <input type="text" name="constraint" placeholder="Add boundary..." required style="padding: 4px 6px; font-size: 0.8em;">
+                            <button type="submit" class="btn-danger" style="padding: 4px 8px; font-size: 0.8em;">+</button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Hardware & System Credentials -->
+                <form method="post" action="/update_system_config" style="background: #f8fafc; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border);">
+                    <div style="font-weight: 600; font-size: 0.85em; margin-bottom: 8px; color: var(--text-main);">Hardware & API Connection</div>
+                    <div class="split-3">
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label for="openai_api_key" style="font-size: 0.8em;">OpenAI API Key
+                                <span class="tooltip">ⓘ<span class="tooltiptext">API token for real-time streaming VLM inference.</span></span>
+                            </label>
+                            <input type="text" id="openai_api_key" name="openai_api_key" value="{{ openai_api_key }}" placeholder="sk-..." style="padding: 5px 8px; font-size: 0.8em;">
+                        </div>
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label for="camera_index" style="font-size: 0.8em;">Camera Index
+                                <span class="tooltip">ⓘ<span class="tooltiptext">Hardware device ID (e.g. 0 for /dev/video0).</span></span>
+                            </label>
+                            <input type="number" id="camera_index" name="camera_index" value="{{ camera_index }}" style="padding: 5px 8px; font-size: 0.8em;">
+                        </div>
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label for="use_mock_vision" style="font-size: 0.8em;">Vision Engine
+                                <span class="tooltip">ⓘ<span class="tooltiptext">Toggle between synthetic testing and physical optical tracking.</span></span>
+                            </label>
+                            <select id="use_mock_vision" name="use_mock_vision" style="padding: 5px 8px; font-size: 0.8em;">
+                                <option value="True" {% if use_mock_vision == 'True' %}selected{% endif %}>Mock Mode (Test)</option>
+                                <option value="False" {% if use_mock_vision == 'False' %}selected{% endif %}>Live Physical Device</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button type="submit" style="width: 100%; margin-top: 8px; padding: 6px; font-size: 0.85em;">Update Hardware & Credentials</button>
+                </form>
+
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Chart.js Visualization Scripts -->
+    <script>
+        const ctx = document.getElementById('interactionChart').getContext('2d');
+        const chartLabels = {{ chart_labels | safe }};
+        const chartData = {{ chart_data | safe }};
+
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: chartLabels,
+                datasets: [{
+                    label: 'Interactions',
+                    data: chartData,
+                    borderColor: '#2563eb',
+                    backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                    borderWidth: 2,
+                    tension: 0.3,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { beginAtZero: true, ticks: { stepSize: 1, precision: 0 } },
+                    x: { ticks: { font: { size: 9 } } }
+                }
+            }
+        });
+
+        const ctx2 = document.getElementById('frameworkChart').getContext('2d');
+        const frameworkLabels = {{ framework_labels | safe }};
+        const frameworkTotals = {{ framework_totals | safe }};
+        const frameworkLeads = {{ framework_leads | safe }};
+
+        new Chart(ctx2, {
+            type: 'bar',
+            data: {
+                labels: frameworkLabels,
+                datasets: [
+                    {
+                        label: 'Total',
+                        data: frameworkTotals,
+                        backgroundColor: 'rgba(148, 163, 184, 0.6)',
+                        borderWidth: 0,
+                        borderRadius: 3
+                    },
+                    {
+                        label: 'Leads',
+                        data: frameworkLeads,
+                        backgroundColor: '#16a34a',
+                        borderWidth: 0,
+                        borderRadius: 3
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 9 } } } },
+                scales: {
+                    y: { beginAtZero: true, ticks: { stepSize: 1, precision: 0 } },
+                    x: { ticks: { font: { size: 9 } } }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
