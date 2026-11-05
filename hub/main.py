@@ -541,10 +541,25 @@ async def get_server_status(username: str = Depends(get_current_username)):
         except Exception:
             pass
 
+    version_str = "0.8.0"
+    v_path = get_config_path("../VERSION.md")
+    if os.path.exists(v_path):
+        try:
+            with open(v_path, "r") as f:
+                version_str = f.read().strip()
+        except Exception:
+            pass
+    elif os.path.exists("VERSION.md"):
+        try:
+            with open("VERSION.md", "r") as f:
+                version_str = f.read().strip()
+        except Exception:
+            pass
+
     return {
         "status": "healthy",
         "service": "Project Sirens Hub",
-        "version": "0.6.0",
+        "version": version_str,
         "mock_vision": str(use_mock_vision).lower() == "true",
         "camera_index": str(camera_index),
         "has_openai_key": bool(openai_key),
