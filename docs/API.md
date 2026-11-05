@@ -18,8 +18,13 @@ Webhook designed to log the completed conversation strings and visual attributes
 **Request Body:**
 ```json
 {
-  "attributes": "navy blue windbreaker, carrying a backpack",
-  "response": "Hey there! With that windbreaker, you look like you're ready for the elements. You should check out our waterproof boots..."
+  "status": "healthy",
+  "service": "Project Sirens Hub",
+  "version": "0.8.0",
+  "mock_vision": true,
+  "camera_index": "0",
+  "has_openai_key": false,
+  "inventory_item_count": 3
 }
 ```
 
@@ -46,34 +51,36 @@ Invokes the core `src/llm_client.py` logic natively within the Hub container. It
 
 ---
 
-## 3. CRM & Lead Management Endpoints
-Used internally by the Dashboard HTML forms to modify SQLite table rows.
+### 9. `GET /api/ab/allocations`
+- **Description**: Retrieves real-time Multi-Armed Bandit framework allocation metrics, Bayesian priors, win rates, and trial counts.
+- **Query Parameter**: `method` (`thompson` or `epsilon_greedy`, default: `thompson`).
+- **Response**:
+```json
+{
+  "method": "thompson",
+  "recommended_framework": "Challenger Sales Framework",
+  "arms": {
+    "Challenger Sales Framework": {
+      "trials": 15,
+      "leads": 6,
+      "win_rate": 0.4,
+      "feedback_sum": 4,
+      "alpha": 7.0,
+      "beta": 10.0
+    }
+  }
+}
+```
 
-### `POST /mark_lead/{interaction_id}`
-Toggles the Boolean `is_lead` flag for a specific conversation event.
-**Form Data:** `is_lead=True` or `is_lead=False`
-**Response:** `303 See Other` redirect to `/`.
-
-### `POST /update_follow_up/{interaction_id}`
-Updates the string content of the `follow_up_notes` column.
-**Form Data:** `follow_up_notes=Client requested a callback on Tuesday.`
-**Response:** `303 See Other` redirect to `/`.
-
----
-
-## 4. Configuration & Inventory Endpoints
-*Note: All of these endpoints utilize the PRG (Post/Redirect/Get) pattern, returning a `303 See Other` redirect to the root `/` page upon success.*
-
-### `POST /update_system_config`
-Updates the runtime system toggles.
-- `openai_api_key`: The secret key for Frontier models.
-- `use_mock_vision`: `True` or `False`.
-
-### `POST /add_item` / `POST /delete_item`
-Manages the `config/inventory.json` catalog.
-- **Add:** Requires `product_name`, `price_usd`, and `usps` (comma separated unique selling points).
-- **Delete:** Requires `product_name`.
-
-### `POST /add_tactic` / `POST /add_constraint`
-Manages the `config/prompt_modifiers.json` AI psychology rulesets.
-- **Add:** Requires `tactic` or `constraint` string.
+### 10. `POST /api/ab/select_framework`
+- **Description**: Dynamically requests the bandit algorithm to allocate a sales framework for an incoming customer interaction.
+- **Query Parameter**: `method` (`thompson` or `epsilon_greedy`, default: `thompson`).
+- **Response**:
+```json
+{
+  "framework": "Challenger Sales Framework",
+  "method": "thompson",
+  "trials": 15,
+  "win_rate": 0.4
+}
+```

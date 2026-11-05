@@ -3,16 +3,22 @@ import json
 import pytest
 import sys
 import os
+from unittest.mock import AsyncMock, patch
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
 
-from llm_client import generate_sales_response, construct_system_prompt
+from llm_client import (
+    generate_sales_response,
+    construct_system_prompt,
+    chunk_text_stream,
+    format_multimodal_user_content,
+    process_vlm_stream
+)
 
 @pytest.mark.asyncio
 async def test_generate_sales_response():
     sys_prompt = "Mock prompt"
 
-    # Ensure OPENAI_API_KEY is not set for mock tests
     if "OPENAI_API_KEY" in os.environ:
         del os.environ["OPENAI_API_KEY"]
 
@@ -26,19 +32,94 @@ async def test_generate_sales_response():
     response = await generate_sales_response(sys_prompt, customer_packet)
     assert "coffee fuel" in response
 
-    # Test default condition
-    customer_packet = {"attributes": ["red shoes"]}
+    # Test athletic / sneakers condition
+    customer_packet = {"attributes": ["red sneakers"]}
+    response = await generate_sales_response(sys_prompt, customer_packet)
+    assert "athletic" in response
+
+    # Test default fallback condition
+    customer_packet = {"attributes": ["plain yellow hat"]}
     response = await generate_sales_response(sys_prompt, customer_packet)
     assert "show you something" in response
 
+
 @pytest.mark.asyncio
 async def test_construct_system_prompt():
-    inventory = {"store_name": "Test Store", "items": []}
-    prompt_modifiers = {"sales_framework": "Test Framework", "tactics_enforced": [], "constraints": []}
+    inventory = {
+        "store_name": "Test Store",
+        "items": [{"product_name": "Test Item", "price_usd": 50}],
+        "promotions": [{"rule_name": "Summer Promo", "discount_percent": 15}]
+    }
+    prompt_modifiers = {"sales_framework": "Test Framework", "tactics_enforced": ["Urgency"], "constraints": ["Be polite"]}
 
     prompt = construct_system_prompt(inventory, prompt_modifiers)
     assert "Test Store" in prompt
     assert "Test Framework" in prompt
+    assert "Summer Promo" in prompt
+    assert "Urgency" in prompt
+    assert "Be polite" in prompt
+
+
+def test_chunk_text_stream():
+    """Verifies that chunk_text_stream divides streams into sentence-level chunks ending with . ! ?."""
+    text = "Hello there! Welcome to the boutique. Check out this coat?"
+    chunks = chunk_text_stream(text)
+    assert len(chunks) == 3
+    assert chunks[0] == "Hello there!"
+    assert chunks[1] == "Welcome to the boutique."
+    assert chunks[2] == "Check out this coat?"
+
+    # Handling text without trailing punctuation
+    trailing_text = "Sentence one. Sentence two without period"
+    chunks_trailing = chunk_text_stream(trailing_text)
+    assert len(chunks_trailing) == 2
+    assert chunks_trailing[0] == "Sentence one."
+    assert chunks_trailing[1] == "Sentence two without period"
+
+
+def test_format_multimodal_user_content():
+    """Verifies format_multimodal_user_content constructs image_url when base64 frame is present."""
+    # Without image
+    packet_no_img = {"attributes": ["red cap"], "proximity": "1.2m"}
+    content_no_img = format_multimodal_user_content(packet_no_img)
+    assert len(content_no_img) == 1
+    assert content_no_img[0]["type"] == "text"
+    assert "red cap" in content_no_img[0]["text"]
+
+    # With compressed base64 image
+    dummy_b64 = "A" * 150
+    packet_with_img = {"attributes": ["blue coat"], "proximity": "close", "frame_data": dummy_b64}
+    content_with_img = format_multimodal_user_content(packet_with_img)
+    assert len(content_with_img) == 2
+    assert content_with_img[0]["type"] == "text"
+    assert content_with_img[1]["type"] == "image_url"
+    assert "data:image/jpeg;base64,AAA" in content_with_img[1]["image_url"]["url"]
+
+
+@pytest.mark.asyncio
+async def test_multimodal_sales_response_with_api_mock(monkeypatch):
+    """Verifies that OpenAI AsyncOpenAI client is called with multimodal user messages when key is present."""
+    mock_client = AsyncMock()
+    mock_completion = AsyncMock()
+    mock_choice = AsyncMock()
+    mock_choice.message.content = "Frontier VLM personalized pitch based on your blue coat."
+    mock_completion.choices = [mock_choice]
+    mock_client.chat.completions.create.return_value = mock_completion
+
+    import llm_client
+    monkeypatch.setattr(llm_client, "get_system_config", lambda: ("sk-mock-key-valid", "False"))
+    monkeypatch.setattr(llm_client, "AsyncOpenAI", lambda api_key: mock_client)
+
+    packet = {
+        "attributes": ["blue coat"],
+        "proximity": "1.1m",
+        "frame_data": "B" * 120
+    }
+
+    resp = await generate_sales_response("Test prompt", packet)
+    assert resp == "Frontier VLM personalized pitch based on your blue coat."
+    mock_client.chat.completions.create.assert_called_once()
+
 
 class MockPubSub:
     async def subscribe(self, *channels):
@@ -50,6 +131,7 @@ class MockPubSub:
     async def listen(self):
         yield {"type": "message", "channel": b"TTS_LATENCY_METRIC", "data": b"150"}
 
+
 class MockRedis:
     def __init__(self):
         self.published_messages = []
@@ -60,10 +142,9 @@ class MockRedis:
     def pubsub(self):
         return MockPubSub()
 
+
 @pytest.mark.asyncio
 async def test_end_to_end_conversation_flow():
-    from llm_client import process_vlm_stream
-
     # Setup mock environment
     os.environ["OPENAI_API_KEY"] = ""
     os.environ["USE_MOCK_VISION"] = "True"
@@ -80,13 +161,9 @@ async def test_end_to_end_conversation_flow():
 
     packet_json = json.dumps(mock_packet)
 
-    # Process the stream
     final_response = await process_vlm_stream(packet_json, mock_redis)
 
-    # Verify the LLM returned our mock expected text for the windbreaker attribute
     assert "winter coat" in final_response
-
-    # Verify the chunker correctly broke down the sentences and sent them to Redis
     assert len(mock_redis.published_messages) > 0
     assert mock_redis.published_messages[0]["channel"] == "AUDIO_CHUNK_READY"
     assert "winter coat" in mock_redis.published_messages[0]["message"]

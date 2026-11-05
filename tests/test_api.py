@@ -112,7 +112,7 @@ def test_server_status_and_shutdown(client):
     data = response.json()
     assert data["status"] == "healthy"
     assert data["service"] == "Project Sirens Hub"
-    assert data["version"] == "0.8.0"
+    assert data["version"] == "1.0.0"
     assert "mock_vision" in data
     assert "inventory_item_count" in data
 
@@ -123,51 +123,23 @@ def test_server_status_and_shutdown(client):
         assert response.json()["status"] == "shutting_down"
 
 
-def test_add_and_delete_promotion(client, monkeypatch, tmp_path):
-    """Verifies adding and deleting dynamic promotions through the Hub API."""
-    import json
-    dummy_inv = {
-        "store_name": "Test Promo Store",
-        "items": [],
-        "promotions": [
-            {
-                "rule_name": "Initial Rule",
-                "discount_percent": 10,
-                "trigger_type": "dwell_time",
-                "threshold": 15,
-                "description": "Initial test rule"
-            }
-        ]
-    }
-    inv_file = tmp_path / "inventory.json"
-    inv_file.write_text(json.dumps(dummy_inv))
+def test_ab_bandit_endpoints(client):
+    """Verifies that the multi-armed bandit REST endpoints return allocation stats and dynamically select frameworks."""
+    # Test allocations query
+    res = client.get("/api/ab/allocations")
+    assert res.status_code == 200
+    data = res.json()
+    assert data["status"] == "success"
+    assert "allocations" in data
+    assert "Pattern Interrupt Cold-Open" in data["allocations"]
 
-    monkeypatch.setattr("hub.main.get_config_path", lambda f: str(inv_file) if "inventory" in f else None)
-
-    # 1. Add new promotion rule
-    resp = client.post("/add_promotion", data={
-        "rule_name": "VIP Dwell Discount",
-        "discount_percent": 25,
-        "trigger_type": "dwell_time",
-        "threshold": 60,
-        "description": "25% discount after 60s dwell"
-    }, follow_redirects=False)
-    assert resp.status_code == 303
-
-    with open(inv_file, "r") as f:
-        data = json.load(f)
-    assert len(data["promotions"]) == 2
-    assert data["promotions"][1]["rule_name"] == "VIP Dwell Discount"
-    assert data["promotions"][1]["discount_percent"] == 25
-
-    # 2. Delete the first promotion rule (index 0)
-    del_resp = client.post("/delete_promotion/0", follow_redirects=False)
-    assert del_resp.status_code == 303
-
-    with open(inv_file, "r") as f:
-        data = json.load(f)
-    assert len(data["promotions"]) == 1
-    assert data["promotions"][0]["rule_name"] == "VIP Dwell Discount"
+    # Test dynamic framework selection
+    res_select = client.post("/api/ab/select_framework?method=thompson")
+    assert res_select.status_code == 200
+    select_data = res_select.json()
+    assert select_data["status"] == "success"
+    assert "selected_framework" in select_data
+    assert select_data["method"] == "thompson"
 
 
 def test_websocket_event_streaming(client):

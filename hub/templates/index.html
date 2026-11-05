@@ -61,7 +61,39 @@
 </head>
 <body>
     <div class="container">
-        <h1>Project Sirens <span style="font-weight: 300; color: #7f8c8d;">| Intelligence Dashboard</span></h1>
+        <!-- TOP HEADER & CONTROLS -->
+        <header class="header-bar">
+            <div class="header-title">
+                <h1>⚡ Project Sirens <span style="font-weight: 300; font-size: 0.75em; color: var(--text-muted);">| Autonomous Retail Engine</span></h1>
+            </div>
+            <div class="system-status-group">
+                <div class="status-pill">
+                    <span class="status-dot"></span>
+                    <span>Hub v1.0.0 Online</span>
+                    <span class="tooltip">ⓘ<span class="tooltiptext">FastAPI asynchronous control server running on port 8000.</span></span>
+                </div>
+                <div class="status-pill" id="ws-pill">
+                    <span class="status-dot" id="ws-dot" style="background: var(--warning);"></span>
+                    <span id="ws-status-text">WS Stream: Connecting</span>
+                    <span class="tooltip">ⓘ<span class="tooltiptext">Real-time WebSocket connection to /ws/events for live in-store stream without refreshes.</span></span>
+                </div>
+                <div class="status-pill">
+                    <span class="status-dot {% if use_mock_vision == 'True' %}warning{% endif %}"></span>
+                    <span>Vision: {% if use_mock_vision == 'True' %}Mock Mode{% else %}Cam ({{ camera_index }}){% endif %}</span>
+                    <span class="tooltip">ⓘ<span class="tooltiptext">Vision status: Mock Mode simulates passersby without hardware; Live mode reads from /dev/video.</span></span>
+                </div>
+                <div class="status-pill">
+                    <span class="status-dot {% if not openai_api_key %}danger{% endif %}"></span>
+                    <span>LLM Engine: {% if openai_api_key %}Ready (VLM API){% else %}Missing Key{% endif %}</span>
+                    <span class="tooltip">ⓘ<span class="tooltiptext">Streaming VLM Frontier model status. Requires an OpenAI API Key configured below.</span></span>
+                </div>
+                <form method="post" action="/api/server/shutdown" onsubmit="return confirm('Gracefully shutdown Hub server process?');" style="margin: 0;">
+                    <button type="submit" class="btn-danger" style="padding: 6px 12px; font-size: 0.8em;" title="Stop the server safely">
+                        Quit Server ⏻
+                    </button>
+                </form>
+            </div>
+        </header>
 
         {% if error_message %}
         <div style="background-color: #fef0f0; border-left: 5px solid #f56c6c; color: #c0392b; padding: 15px; margin-bottom: 25px; border-radius: 4px; font-weight: bold;">
@@ -115,145 +147,93 @@
                             <canvas id="frameworkChart" width="100%" height="60"></canvas>
                         </div>
                     </div>
-                    <div class="interaction-log-container" style="flex-grow: 1;">
-                        {% for interaction in interactions %}
-                        <div class="item-card" style="padding: 12px; {% if interaction.is_lead %}border-left: 4px solid #27ae60;{% endif %}">
-                            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                                <div>
-                                    <strong style="color: #4a5568;">Profile: {{ interaction.attributes }}</strong>
-                                    {% if interaction.is_lead %}
-                                    <span style="background-color: #e8f5e9; color: #2e7d32; padding: 2px 6px; border-radius: 4px; font-size: 0.75em; margin-left: 8px; border: 1px solid #c8e6c9;">Qualified Lead</span>
-                                    {% endif %}
-                                </div>
-                                <span style="font-size: 0.75em; color: #a0aec0; white-space: nowrap; margin-left: 10px;">{{ interaction.timestamp.strftime('%y-%m-%d %H:%M') }}</span>
-                            </div>
-                            <div class="response-box" style="margin-bottom: 10px;">
-                                "{{ interaction.response }}"
-                            </div>
-                            {% if interaction.tts_latency_ms > 0 %}
-                            <div style="font-size: 0.75em; color: #718096; margin-bottom: 8px; text-align: right;">
-                                TTS Latency: {{ interaction.tts_latency_ms }}ms
-                            </div>
-                            {% endif %}
+                    {% else %}
+                    <p style="color: var(--text-muted); font-style: italic; text-align: center; padding: 24px;">No customer interactions logged yet. Run a simulation or connect hardware vision!</p>
+                    {% endfor %}
+                </div>
+            </div>
 
-                            <div style="background: #edf2f7; padding: 10px; border-radius: 6px; font-size: 0.85em;">
-                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-                                    <form method="post" action="/mark_lead/{{ interaction.id }}" style="margin: 0;">
-                                        <input type="hidden" name="is_lead" value="{{ 'False' if interaction.is_lead else 'True' }}">
-                                        <button type="submit" style="padding: 4px 8px; font-size: 0.9em; background-color: {% if interaction.is_lead %}#7f8c8d{% else %}#27ae60{% endif %};">
-                                            {% if interaction.is_lead %}Remove Lead Status{% else %}Mark as Lead{% endif %}
-                                        </button>
-                                    </form>
+            <!-- CONFIGURATION & KNOWLEDGE BASE ROW (CONSOLIDATED) -->
 
-                                    <form method="post" action="/submit_feedback/{{ interaction.id }}" style="margin: 0; display: flex; align-items: center; gap: 5px;">
-                                        <span style="color: #718096;">Rating:</span>
-                                        <button type="submit" name="feedback_score" value="1" style="padding: 2px 8px; font-size: 0.9em; background-color: {% if interaction.feedback_score == 1 %}#e74c3c{% else %}#cbd5e0{% endif %};">👎</button>
-                                        <button type="submit" name="feedback_score" value="5" style="padding: 2px 8px; font-size: 0.9em; background-color: {% if interaction.feedback_score == 5 %}#2ecc71{% else %}#cbd5e0{% endif %};">👍</button>
-                                    </form>
-                                </div>
+            <!-- KNOWLEDGE BASE: PRODUCT INVENTORY -->
+            <div class="card">
+                <div class="card-header">
+                    <h2>📦 Product Inventory & Pitch Assets <span class="badge" style="background: #fef3c7; color: #b45309; border: 1px solid #fde68a;">Catalog</span></h2>
+                    <span class="tooltip">ⓘ<span class="tooltiptext">The store catalog available for the agent to promote. The agent selects items matching visual cues and weaves Unique Selling Points into pitches.</span></span>
+                </div>
 
-                                <form method="post" action="/update_follow_up/{{ interaction.id }}" style="display: flex; gap: 8px; margin-top: 8px;">
-                                    <input type="text" name="follow_up_notes" value="{{ interaction.follow_up_notes }}" placeholder="Add follow up notes..." style="padding: 4px 8px; font-size: 0.9em; flex-grow: 1;">
-                                    <button type="submit" style="padding: 4px 8px; font-size: 0.9em; background-color: #34495e;">Save Note</button>
-                                </form>
+                <div class="scrollable-feed" style="max-height: 250px; margin-bottom: 16px;">
+                    {% for item in items %}
+                    <div class="item-card" style="border-left: 3px solid #f59e0b; padding: 10px 12px;">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                            <div>
+                                <strong style="color: var(--text-main);">{{ item.product_name }}</strong>
+                                <span style="color: var(--success); font-weight: bold; margin-left: 8px;">${{ item.price_usd }}</span>
+                                <ul style="margin: 4px 0 0 0; padding-left: 18px; font-size: 0.82em; color: var(--text-muted);">
+                                    {% for usp in item.unique_selling_points %}
+                                    <li>{{ usp }}</li>
+                                    {% endfor %}
+                                </ul>
                             </div>
+                            <form method="post" action="/delete_item" style="margin: 0;">
+                                <input type="hidden" name="product_name" value="{{ item.product_name }}">
+                                <button type="submit" class="btn-danger" style="padding: 3px 8px; font-size: 0.75em;" title="Delete product">✕</button>
+                            </form>
                         </div>
-                        {% else %}
-                        <div style="text-align: center; padding: 40px 20px; color: #a0aec0; background: #f8fafc; border-radius: 8px; border: 1px dashed #cbd5e0;">
-                            <p style="margin: 0;">No interactions logged yet. Run a simulation above to test.</p>
+                    </div>
+                    {% else %}
+                    <p style="color: var(--text-muted); font-style: italic;">No items currently in inventory.</p>
+                    {% endfor %}
+                </div>
+
+                <!-- Add Product Form -->
+                <form method="post" action="/add_item" style="background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid var(--border);">
+                    <div style="font-weight: 600; font-size: 0.85em; margin-bottom: 8px; color: var(--text-main);">+ Add New Inventory Item</div>
+                    <div class="split-2" style="margin-bottom: 8px;">
+                        <input type="text" name="product_name" placeholder="Product Name (e.g. AeroFoam Headphones)" required>
+                        <input type="number" step="0.01" name="price_usd" placeholder="Price (USD)" required>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="text" name="usps" placeholder="Unique Selling Points (comma separated e.g. 40hr battery, ANC)" required style="flex-grow: 1;">
+                        <button type="submit" style="background-color: #f59e0b; white-space: nowrap;">Add Item</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- AGENT SALES PSYCHOLOGY & SYSTEM SETTINGS -->
+            <div class="card">
+                <div class="card-header">
+                    <h2>🎰 Automated A/B Sales Framework Optimization <span class="badge" style="background: #ede9fe; color: #6d28d9; border: 1px solid #ddd6fe;">Multi-Armed Bandit</span></h2>
+                    <span class="tooltip">ⓘ<span class="tooltiptext">Autonomous Thompson Sampling engine allocating traffic across sales frameworks based on lead conversions and feedback scores.</span></span>
+                </div>
+
+                <div style="margin-bottom: 16px;">
+                    <div style="font-size: 0.85em; color: var(--text-muted); margin-bottom: 8px;">
+                        Bayesian allocation balancing exploration of new frameworks with exploitation of top converting approaches:
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                        {% for fw_name, stats in bandit_stats.items() %}
+                        <div style="background: #f8fafc; border: 1px solid var(--border); border-radius: 6px; padding: 8px 12px; display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <strong style="font-size: 0.85em; color: var(--text-main);">{{ fw_name }}</strong>
+                                <div style="font-size: 0.75em; color: var(--text-muted);">
+                                    Trials: {{ stats.trials }} | Leads: {{ stats.leads }} | Rating sum: +{{ stats.positive_ratings }}
+                                </div>
+                            </div>
+                            <div style="text-align: right;">
+                                <span class="badge" style="background: #dcfce7; color: #15803d; font-size: 0.8em;">{{ stats.conversion_rate }}% Win Rate</span>
+                                <div style="font-size: 0.7em; color: var(--text-muted); margin-top: 2px;">
+                                    Beta(α={{ "%.1f"|format(stats.alpha) }}, β={{ "%.1f"|format(stats.beta) }})
+                                </div>
+                            </div>
                         </div>
                         {% endfor %}
                     </div>
                 </div>
-            </div>
 
-            <!-- RIGHT COLUMN: Configuration & Knowledge Base -->
-            <div class="column">
-
-                <!-- Core Settings & Hardware -->
-                <div class="section">
-                    <h2>Core Configuration <span class="tooltip">ⓘ<span class="tooltiptext">Essential settings controlling the agent's identity, primary sales approach, and hardware/API connections.</span></span></h2>
-
-                    <form method="post" action="/update_settings" style="margin-bottom: 25px; padding-bottom: 20px; border-bottom: 1px solid #e1e4e8;">
-                        <div class="dashboard-grid" style="grid-gap: 15px;">
-                            <div class="form-group">
-                                <label for="store_name">Store Name</label>
-                                <input type="text" id="store_name" name="store_name" value="{{ store_name }}" placeholder="e.g. Apex Tech Boutique" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="sales_framework">Primary Sales Framework <span class="tooltip">ⓘ<span class="tooltiptext">The overarching psychological strategy (e.g., Pattern Interrupt, Consultative, Challenger Sale).</span></span></label>
-                                <input type="text" id="sales_framework" name="sales_framework" value="{{ sales_framework }}" placeholder="e.g. Pattern Interrupt" required>
-                            </div>
-                        </div>
-                        <button type="submit">Update Store Settings</button>
-                    </form>
-
-                    <form method="post" action="/update_system_config">
-                        <h3>Hardware & API Toggles</h3>
-                        <div class="dashboard-grid" style="grid-template-columns: 2fr 1fr; grid-gap: 15px;">
-                            <div class="form-group">
-                                <label for="openai_api_key">OpenAI API Key <span class="tooltip">ⓘ<span class="tooltiptext">Required for live VLM streaming. If blank, the system falls back to mock canned responses.</span></span></label>
-                                <input type="text" id="openai_api_key" name="openai_api_key" value="{{ openai_api_key }}" placeholder="sk-...">
-                            </div>
-                            <div class="form-group">
-                                <label for="use_mock_vision">Vision Feed <span class="tooltip">ⓘ<span class="tooltiptext">False: Connect to local webcam/Pi Camera (/dev/video0). True: Run mock background loop.</span></span></label>
-                                <select id="use_mock_vision" name="use_mock_vision">
-                                    <option value="True" {% if use_mock_vision == 'True' %}selected{% endif %}>Mock (Test)</option>
-                                    <option value="False" {% if use_mock_vision == 'False' %}selected{% endif %}>Live (Camera)</option>
-                                </select>
-                            </div>
-                        </div>
-                        <button type="submit">Update System Config</button>
-                    </form>
-                </div>
-
-                <!-- Psychology Rules -->
-                <div class="section">
-                    <div style="display: flex; justify-content: space-between; align-items: baseline;">
-                        <h2>Psychology Modifiers <span class="tooltip">ⓘ<span class="tooltiptext">Granular behavioral rules injected directly into the LLM system prompt.</span></span></h2>
-                    </div>
-
-                    <div class="dashboard-grid">
-                        <!-- Tactics -->
-                        <div>
-                            <h3 style="margin-top: 0; color: #27ae60;">Tactics Enforced <span class="tooltip">ⓘ<span class="tooltiptext">Specific techniques the agent MUST try to use.</span></span></h3>
-                            <div style="max-height: 200px; overflow-y: auto; margin-bottom: 10px;">
-                                {% for tactic in tactics_enforced %}
-                                <div class="list-item" style="border-left: 3px solid #27ae60;">
-                                    <span style="font-size: 0.9em;">{{ tactic }}</span>
-                                    <form method="post" action="/delete_tactic" style="margin: 0;">
-                                        <input type="hidden" name="tactic" value="{{ tactic }}">
-                                        <button type="submit" class="btn-danger" style="padding: 2px 6px; font-size: 0.75em; border-radius: 3px;" title="Delete">X</button>
-                                    </form>
-                                </div>
-                                {% endfor %}
-                            </div>
-                            <form method="post" action="/add_tactic" class="inline-form">
-                                <div class="form-group"><input type="text" name="tactic" placeholder="Add tactic..." required style="padding: 6px;"></div>
-                                <button type="submit" style="padding: 6px 10px; background-color: #27ae60;">Add</button>
-                            </form>
-                        </div>
-
-                        <!-- Constraints -->
-                        <div>
-                            <h3 style="margin-top: 0; color: #e74c3c;">Constraints <span class="tooltip">ⓘ<span class="tooltiptext">Strict boundaries or words the agent MUST NEVER use.</span></span></h3>
-                            <div style="max-height: 200px; overflow-y: auto; margin-bottom: 10px;">
-                                {% for constraint in constraints %}
-                                <div class="list-item" style="border-left: 3px solid #e74c3c;">
-                                    <span style="font-size: 0.9em;">{{ constraint }}</span>
-                                    <form method="post" action="/delete_constraint" style="margin: 0;">
-                                        <input type="hidden" name="constraint" value="{{ constraint }}">
-                                        <button type="submit" class="btn-danger" style="padding: 2px 6px; font-size: 0.75em; border-radius: 3px;" title="Delete">X</button>
-                                    </form>
-                                </div>
-                                {% endfor %}
-                            </div>
-                            <form method="post" action="/add_constraint" class="inline-form">
-                                <div class="form-group"><input type="text" name="constraint" placeholder="Add constraint..." required style="padding: 6px;"></div>
-                                <button type="submit" style="padding: 6px 10px; background-color: #e74c3c;">Add</button>
-                            </form>
-                        </div>
-                    </div>
+                <div class="card-header" style="margin-top: 8px;">
+                    <h2>🧠 Sales Psychology & System Config</h2>
+                    <span class="tooltip">ⓘ<span class="tooltiptext">Fine-tune the retail behavioral framework, mandatory conversion tactics, privacy constraints, and underlying edge hardware settings.</span></span>
                 </div>
 
                 <!-- Product Inventory -->

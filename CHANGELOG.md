@@ -1,5 +1,33 @@
 # CHANGELOG
 
+## [0.9.0] - Multi-Armed Bandit Dynamic A/B Sales Testing Engine
+- **Bayesian Multi-Armed Bandit Core (`hub/ab_engine.py`)**: Implemented `MultiArmedBanditEngine` supporting Thompson Sampling (`random.betavariate(alpha, beta)`) and $\epsilon$-greedy framework allocation over live interaction lead conversions and pitch feedback ratings.
+- **Dynamic Framework Allocation Endpoints (`hub/main.py`)**: Added `GET /api/ab/allocations` returning real-time trial counts, lead win rates, feedback averages, and Beta prior distributions, plus `POST /api/ab/select_framework` for autonomous interaction-time strategy assignment.
+- **Dashboard Optimization UI (`hub/templates/index.html`)**: Added dedicated "Automated A/B Sales Framework Optimization" card displaying live conversion rate pills, Bayesian Beta parameter metrics ($\alpha$, $\beta$), and contextual explanatory tooltips.
+- **A/B Engine Test Suite (`tests/test_ab_engine.py`, `tests/test_api.py`)**: Validated Bayesian convergence, exploitation vs. exploration mechanics, and HTTP REST endpoint integrity across unit and integration tests.
+
+## [0.8.0] - Vision Feature Extraction & Multimodal Frontier VLM Integration
+- **Distance Calibration & Proximity Estimation (`src/vision.py`)**: Implemented `calculate_proximity` inverse distance modeling mapped against frame height ratios (close ≤1.2m, mid-range 1.2–2.5m, far >2.5m).
+- **Temporal Dwell Lock (>1.5s) (`src/vision.py`)**: Added `is_target_dwelling` tracking target persistence before triggering conversational locks.
+- **Visual Attribute & Color Heuristics (`src/vision.py`)**: Built `extract_visual_attributes` parsing torso HSV values to identify broad outerwear colors and apparel categories without violating privacy guidelines.
+- **Multimodal Frontier VLM Pipeline (`src/llm_client.py`)**: Implemented `format_multimodal_user_content` and updated `generate_sales_response` to package structured metadata alongside compressed base64 JPEG crops to OpenAI/Gemini chat completions.
+- **Low-Latency Stream Chunking (`src/llm_client.py`)**: Added `chunk_text_stream` splitting token streams on punctuation marks (. ! ?) for low-latency Piper TTS audio piping.
+- **Comprehensive Test Suite**: Added granular unit tests in `tests/test_vision.py` and `tests/test_conversation.py` with 100% test pass rate across 23 tests.
+
+## [0.7.0] - Real-Time WebSocket Streaming & Live CRM Event Push
+- **WebSocket Streaming (`/ws/events`)**: Added FastAPI WebSocket route with `ConnectionManager` to push customer interactions directly to connected dashboard clients without polling.
+- **Dynamic Dashboard Feed Updates**: Enhanced `hub/templates/index.html` with real-time WebSocket client listener, connection status pill (`WS Stream: Live`), auto-reconnect backoff logic, and instant UI prepending of new interaction cards into the CRM stream.
+- **WebSocket Protocol Integration**: Added pinned `websockets` dependency to `requirements.txt` to support Uvicorn WebSocket serving.
+- **End-to-End WebSocket Testing**: Added `test_websocket_event_streaming` in `tests/test_api.py` and Playwright visual verification script confirming real-time feed update behavior.
+
+## [0.6.0] - Unified Dashboard Redesign, Desktop Tray Controller & Lifecycle Automation
+- **Unified Single-Page Dashboard**: Completely redesigned `hub/templates/index.html` with a modern, responsive, high-value-first layout. Placed real-time system status indicators and server lifecycle controls at the top header, followed by the Simulation Engine and Live CRM Analytics feed with Chart.js charts, and consolidated Product Inventory and Psychology Settings below.
+- **Desktop System Tray Controller (`src/tray_app.py`)**: Built a cross-platform system tray manager using `pystray` and `PIL` with dynamic lightning bolt taskbar icon rendering, browser launch shortcuts, server status monitoring, and graceful process shutdown controls. Includes automatic headless/display detection fallback for CI and server deployments.
+- **Backend Lifecycle & Modernization**: Refactored `hub/main.py` to use modern FastAPI `@asynccontextmanager lifespan` handlers and replaced deprecated `datetime.utcnow()` with timezone-aware `datetime.now(datetime.UTC)`.
+- **Server Health & Shutdown Endpoints**: Added `GET /api/status` for real-time Hub health/configuration checks and `POST /api/server/shutdown` for graceful server process termination.
+- **Server Management Scripts**: Added `scripts/manage_servers.sh` (start/stop/restart/status), `scripts/run_hub.sh`, `scripts/run_kiosk.sh`, and `scripts/run_tray.sh`.
+- **E2E Test Expansion**: Added `tests/test_tray.py` and updated `tests/test_api.py` to guarantee full coverage of server management, tray status, and dashboard API responses.
+
 ## [0.3.0] - Persistent CRM Logging, Lead Tracking, & UI Redesign
 - Added persistent conversation storage using an SQLite database (via SQLAlchemy) to log customer interactions.
 - Integrated Lead Tracking: interactions can now be flagged as qualified leads via `/mark_lead` and attached with follow-up persistence notes via `/update_follow_up`.

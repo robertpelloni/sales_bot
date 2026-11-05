@@ -23,6 +23,28 @@
   - Incorporate text-to-speech latency performance logging into the database.
   - Develop user interaction feedback mechanisms.
 
-- Phase 6: Security & API Authorization
-  - Implement FastAPI `HTTPBasic` authentication to protect configuration endpoints.
-  - Secure `/api/log_interaction` webhook to prevent unauthorized DB writes.
+- Phase 6: Unified Dashboard, System Tray & Lifecycle Automation (Completed 0.6.0)
+  - Redesign dashboard into a high-value single-page grid layout with comprehensive tooltips and status bar.
+  - Add desktop system tray controller (`src/tray_app.py`) with process management and graceful shutdown.
+  - Expose `/api/status` and `/api/server/shutdown` endpoints.
+  - Provide unified server management scripts in `scripts/`.
+
+- Phase 7: Real-Time WebSocket Streaming & Dynamic Feed (Completed 0.7.0)
+  - Real-time duplex WebSocket stream (`/ws/events`) with `ConnectionManager`.
+  - Push new customer interaction events directly to the dashboard DOM without polling.
+  - Visual Playwright E2E verification of live feed card insertion.
+
+- Phase 8: Vision Feature Extraction & Multimodal Frontier VLM Integration (Completed 0.8.0)
+  - Calibrated bounding box proximity estimation and 1.5s dwell time locking.
+  - Extracted dominant apparel color heuristics and packaged metadata with base64 JPEG crops.
+  - Integrated multimodal OpenAI/Gemini chat completions with sentence-level stream chunking for Piper TTS.
+
+- Phase 9: Multi-Armed Bandit Dynamic A/B Sales Testing Engine (Completed 0.9.0)
+  - Autonomous strategy allocation using Thompson Sampling (Beta priors) and $\epsilon$-greedy exploration.
+  - Integration with CRM conversion events (leads flagged, feedback ratings).
+  - High-value dashboard card with live arm win rates and parameter introspection.
+  - REST endpoints (`/api/ab/allocations`, `/api/ab/select_framework`) for dynamic kiosk querying.
+
+- Phase 10: Edge Hardware Acceleration & Hailo / TPU Integrations (Planned 1.0.0)
+  - Integrate native Raspberry Pi AI Camera IMX500 hardware neural network models.
+  - Support Coral Edge TPU TFLite runtime models for zero-CPU vision inference.
