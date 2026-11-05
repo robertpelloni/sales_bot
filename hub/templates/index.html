@@ -375,7 +375,7 @@
             <div class="system-status-group">
                 <div class="status-pill">
                     <span class="status-dot"></span>
-                    <span>Hub v0.7.0 Online</span>
+                    <span>Hub v0.9.0 Online</span>
                     <span class="tooltip">ⓘ<span class="tooltiptext">FastAPI asynchronous control server running on port 8000.</span></span>
                 </div>
                 <div class="status-pill" id="ws-pill">
@@ -584,6 +584,35 @@
             <!-- AGENT SALES PSYCHOLOGY & SYSTEM SETTINGS -->
             <div class="card">
                 <div class="card-header">
+                    <h2>🎰 Automated A/B Sales Framework Optimization <span class="badge" style="background: #ede9fe; color: #6d28d9; border: 1px solid #ddd6fe;">Multi-Armed Bandit</span></h2>
+                    <span class="tooltip">ⓘ<span class="tooltiptext">Autonomous Thompson Sampling engine allocating traffic across sales frameworks based on lead conversions and feedback scores.</span></span>
+                </div>
+
+                <div style="margin-bottom: 16px;">
+                    <div style="font-size: 0.85em; color: var(--text-muted); margin-bottom: 8px;">
+                        Bayesian allocation balancing exploration of new frameworks with exploitation of top converting approaches:
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                        {% for fw_name, stats in bandit_stats.items() %}
+                        <div style="background: #f8fafc; border: 1px solid var(--border); border-radius: 6px; padding: 8px 12px; display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <strong style="font-size: 0.85em; color: var(--text-main);">{{ fw_name }}</strong>
+                                <div style="font-size: 0.75em; color: var(--text-muted);">
+                                    Trials: {{ stats.trials }} | Leads: {{ stats.leads }} | Rating sum: +{{ stats.positive_ratings }}
+                                </div>
+                            </div>
+                            <div style="text-align: right;">
+                                <span class="badge" style="background: #dcfce7; color: #15803d; font-size: 0.8em;">{{ stats.conversion_rate }}% Win Rate</span>
+                                <div style="font-size: 0.7em; color: var(--text-muted); margin-top: 2px;">
+                                    Beta(α={{ "%.1f"|format(stats.alpha) }}, β={{ "%.1f"|format(stats.beta) }})
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="card-header" style="margin-top: 8px;">
                     <h2>🧠 Sales Psychology & System Config</h2>
                     <span class="tooltip">ⓘ<span class="tooltiptext">Fine-tune the retail behavioral framework, mandatory conversion tactics, privacy constraints, and underlying edge hardware settings.</span></span>
                 </div>

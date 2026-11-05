@@ -1,7 +1,24 @@
-# HANDOFF - Project Sirens (v0.8.0)
+# HANDOFF - Project Sirens (v0.9.0)
 
 ## Session Summary & Overview
-In this session, Project Sirens was upgraded through versions **0.7.0** and **0.8.0**, implementing the full core vision feature extraction, bounding box distance calibration, 1.5-second dwell time trigger, dominant clothing color heuristics, multimodal Frontier VLM integration with base64 JPEG crops, low-latency sentence token stream chunking (. ! ?), and comprehensive automated testing.
+In this session, Project Sirens was upgraded through versions **0.7.0**, **0.8.0**, and **0.9.0**, adding real-time WebSocket streaming, core computer vision feature extraction and multimodal Frontier VLM pipelines, and a complete Multi-Armed Bandit Dynamic A/B Sales Framework Optimization Engine.
+
+## What Was Accomplished in v0.9.0 (Multi-Armed Bandit Dynamic A/B Sales Testing Engine)
+1. **Bayesian Bandit Core Engine (`hub/ab_engine.py`)**:
+   - Implemented `MultiArmedBanditEngine` aggregating live interaction outcomes (trials, lead conversions, positive pitch feedback) grouped by sales framework.
+   - Built dual strategy selectors: **Thompson Sampling** (`random.betavariate(alpha, beta)`) modeling conjugate Beta distributions for Bayesian exploration/exploitation, and **$\epsilon$-Greedy Sampling** with a configurable exploration rate (default $\epsilon=0.20$).
+   - Supported custom strategy arms while providing comprehensive fallback defaults (`Pattern Interrupt Cold-Open`, `Challenger Sales Framework`, `Consultative Problem-Solver`, `Assumptive Close Narrative`).
+2. **REST Endpoints (`hub/main.py`)**:
+   - Added `GET /api/ab/allocations`: Returns real-time metrics per framework arm (trial count, lead count, win rate, feedback rating sum, $(\alpha, \beta)$ parameters) and the recommended arm.
+   - Added `POST /api/ab/select_framework`: Dynamically evaluates live conversion statistics to allocate an optimal sales framework for incoming kiosk interactions.
+3. **High-Value Dashboard Optimization UI (`hub/templates/index.html`)**:
+   - Integrated an "Automated A/B Sales Framework Optimization" card into the single-page dashboard.
+   - Added live win rate badges (`X.X% Win Rate`), Bayesian Beta parameter displays, and descriptive tooltip helpers.
+4. **Automated & Visual Verification**:
+   - Built unit tests in `tests/test_ab_engine.py` verifying convergence towards superior arms and $\epsilon$-greedy behavior.
+   - Built API integration tests in `tests/test_api.py` verifying `/api/ab/allocations` and `/api/ab/select_framework`.
+   - Verified frontend rendering visually with Playwright (`/home/jules/verification/ab_bandit_verified.png`).
+   - Total test suite now stands at 27 passing tests.
 
 ## What Was Accomplished in v0.8.0 (Core Vision & Frontier VLM Multimodal Integration)
 1. **Core Vision Processing & Distance Calibration (`src/vision.py`)**:

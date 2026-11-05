@@ -101,3 +101,37 @@ Configuration and administration endpoints are protected with HTTP Basic Authent
 ### 8. `POST /update_follow_up/{interaction_id}`
 - **Description**: Appends permanent staff follow-up notes to a CRM interaction record.
 - **Form Parameter**: `follow_up_notes`.
+
+### 9. `GET /api/ab/allocations`
+- **Description**: Retrieves real-time Multi-Armed Bandit framework allocation metrics, Bayesian priors, win rates, and trial counts.
+- **Query Parameter**: `method` (`thompson` or `epsilon_greedy`, default: `thompson`).
+- **Response**:
+```json
+{
+  "method": "thompson",
+  "recommended_framework": "Challenger Sales Framework",
+  "arms": {
+    "Challenger Sales Framework": {
+      "trials": 15,
+      "leads": 6,
+      "win_rate": 0.4,
+      "feedback_sum": 4,
+      "alpha": 7.0,
+      "beta": 10.0
+    }
+  }
+}
+```
+
+### 10. `POST /api/ab/select_framework`
+- **Description**: Dynamically requests the bandit algorithm to allocate a sales framework for an incoming customer interaction.
+- **Query Parameter**: `method` (`thompson` or `epsilon_greedy`, default: `thompson`).
+- **Response**:
+```json
+{
+  "framework": "Challenger Sales Framework",
+  "method": "thompson",
+  "trials": 15,
+  "win_rate": 0.4
+}
+```

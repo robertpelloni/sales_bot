@@ -17,6 +17,7 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import func, Integer, select
 from .database import get_db, init_db, Interaction
+from .ab_engine import bandit_engine
 
 
 class ConnectionManager:
@@ -176,6 +177,9 @@ async def read_root(request: Request, simulated_response: str = "", error_messag
     framework_totals = [row.total for row in framework_metrics]
     framework_leads = [row.leads or 0 for row in framework_metrics] # sum returns None if empty
 
+    # Fetch real-time A/B Bandit statistics
+    bandit_stats = await bandit_engine.get_framework_performance(db)
+
     return templates.TemplateResponse(request=request, name="index.html", context={
         "chart_labels": json.dumps(chart_labels),
         "chart_data": json.dumps(chart_data),
@@ -191,6 +195,7 @@ async def read_root(request: Request, simulated_response: str = "", error_messag
         "use_mock_vision": use_mock_vision,
         "simulated_response": simulated_response,
         "interactions": interactions,
+        "bandit_stats": bandit_stats,
         "error_message": error_message
     })
 
@@ -495,6 +500,25 @@ async def get_server_status(username: str = Depends(get_current_username)):
         "camera_index": str(camera_index),
         "has_openai_key": bool(openai_key),
         "inventory_item_count": item_count
+    }
+
+
+@app.get("/api/ab/allocations")
+async def get_ab_allocations(db: AsyncSession = Depends(get_db), username: str = Depends(get_current_username)):
+    """Returns the multi-armed bandit framework performance, empirical win rates, and Bayesian priors."""
+    stats = await bandit_engine.get_framework_performance(db)
+    return {"status": "success", "allocations": stats}
+
+
+@app.post("/api/ab/select_framework")
+async def select_ab_framework(method: str = "thompson", db: AsyncSession = Depends(get_db), username: str = Depends(get_current_username)):
+    """Dynamically samples the optimal sales framework for an incoming customer interaction."""
+    chosen_framework, stats = await bandit_engine.allocate_next_framework(db, method=method)
+    return {
+        "status": "success",
+        "selected_framework": chosen_framework,
+        "method": method,
+        "conversion_rate": stats.get(chosen_framework, {}).get("conversion_rate", 0.0)
     }
 
 

@@ -114,7 +114,7 @@ def test_server_status_and_shutdown(client):
     data = response.json()
     assert data["status"] == "healthy"
     assert data["service"] == "Project Sirens Hub"
-    assert data["version"] == "0.8.0"
+    assert data["version"] == "0.9.0"
     assert "mock_vision" in data
     assert "inventory_item_count" in data
 
@@ -123,6 +123,25 @@ def test_server_status_and_shutdown(client):
         response = client.post("/api/server/shutdown")
         assert response.status_code == 200
         assert response.json()["status"] == "shutting_down"
+
+
+def test_ab_bandit_endpoints(client):
+    """Verifies that the multi-armed bandit REST endpoints return allocation stats and dynamically select frameworks."""
+    # Test allocations query
+    res = client.get("/api/ab/allocations")
+    assert res.status_code == 200
+    data = res.json()
+    assert data["status"] == "success"
+    assert "allocations" in data
+    assert "Pattern Interrupt Cold-Open" in data["allocations"]
+
+    # Test dynamic framework selection
+    res_select = client.post("/api/ab/select_framework?method=thompson")
+    assert res_select.status_code == 200
+    select_data = res_select.json()
+    assert select_data["status"] == "success"
+    assert "selected_framework" in select_data
+    assert select_data["method"] == "thompson"
 
 
 def test_websocket_event_streaming(client):

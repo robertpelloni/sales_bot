@@ -23,10 +23,17 @@
 - [x] Implement sentence-level stream chunking (. ! ?) in `src/llm_client.py` for low-latency Piper TTS piping.
 - [x] Comprehensive test coverage in `tests/test_vision.py` and `tests/test_conversation.py`.
 
-## Short-Term (0.9.0)
+## Completed in 0.9.0
+- [x] Implement Multi-Armed Bandit engine (`hub/ab_engine.py`) using Thompson Sampling and $\epsilon$-greedy strategies.
+- [x] Wire live interaction database conversion events and feedback ratings into Bayesian $(\alpha, \beta)$ distributions.
+- [x] Expose REST endpoints (`GET /api/ab/allocations`, `POST /api/ab/select_framework`) for dynamic kiosk querying.
+- [x] Add high-value dashboard optimization card with live win rate badges and parameter metrics.
+- [x] Visual Playwright verification and unit/integration tests (`tests/test_ab_engine.py`, `tests/test_api.py`).
+
+## Short-Term (1.0.0)
 - [ ] Implement Coral Edge TPU compiled TFLite model runner for YOLOv11n in `src/vision.py`.
 - [ ] Add dynamic discount rule builder to the Inventory panel for automated volume pricing.
 
-## Long-Term (1.0.0+)
+## Long-Term (1.1.0+)
 - [ ] Multi-kiosk fleet synchronization via central Redis clustering or gRPC mesh.
-- [ ] Automated A/B test convergence engine using multi-armed bandits on customer dwell time.
+- [ ] Multi-armed bandit reward convergence on customer dwell time alongside explicit lead conversion.

@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## [0.9.0] - Multi-Armed Bandit Dynamic A/B Sales Testing Engine
+- **Bayesian Multi-Armed Bandit Core (`hub/ab_engine.py`)**: Implemented `MultiArmedBanditEngine` supporting Thompson Sampling (`random.betavariate(alpha, beta)`) and $\epsilon$-greedy framework allocation over live interaction lead conversions and pitch feedback ratings.
+- **Dynamic Framework Allocation Endpoints (`hub/main.py`)**: Added `GET /api/ab/allocations` returning real-time trial counts, lead win rates, feedback averages, and Beta prior distributions, plus `POST /api/ab/select_framework` for autonomous interaction-time strategy assignment.
+- **Dashboard Optimization UI (`hub/templates/index.html`)**: Added dedicated "Automated A/B Sales Framework Optimization" card displaying live conversion rate pills, Bayesian Beta parameter metrics ($\alpha$, $\beta$), and contextual explanatory tooltips.
+- **A/B Engine Test Suite (`tests/test_ab_engine.py`, `tests/test_api.py`)**: Validated Bayesian convergence, exploitation vs. exploration mechanics, and HTTP REST endpoint integrity across unit and integration tests.
+
 ## [0.8.0] - Vision Feature Extraction & Multimodal Frontier VLM Integration
 - **Distance Calibration & Proximity Estimation (`src/vision.py`)**: Implemented `calculate_proximity` inverse distance modeling mapped against frame height ratios (close ≤1.2m, mid-range 1.2–2.5m, far >2.5m).
 - **Temporal Dwell Lock (>1.5s) (`src/vision.py`)**: Added `is_target_dwelling` tracking target persistence before triggering conversational locks.

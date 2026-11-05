@@ -39,6 +39,12 @@
   - Extracted dominant apparel color heuristics and packaged metadata with base64 JPEG crops.
   - Integrated multimodal OpenAI/Gemini chat completions with sentence-level stream chunking for Piper TTS.
 
-- Phase 9: Edge Hardware Acceleration & Hailo / TPU Integrations (Planned 0.9.0)
+- Phase 9: Multi-Armed Bandit Dynamic A/B Sales Testing Engine (Completed 0.9.0)
+  - Autonomous strategy allocation using Thompson Sampling (Beta priors) and $\epsilon$-greedy exploration.
+  - Integration with CRM conversion events (leads flagged, feedback ratings).
+  - High-value dashboard card with live arm win rates and parameter introspection.
+  - REST endpoints (`/api/ab/allocations`, `/api/ab/select_framework`) for dynamic kiosk querying.
+
+- Phase 10: Edge Hardware Acceleration & Hailo / TPU Integrations (Planned 1.0.0)
   - Integrate native Raspberry Pi AI Camera IMX500 hardware neural network models.
   - Support Coral Edge TPU TFLite runtime models for zero-CPU vision inference.
