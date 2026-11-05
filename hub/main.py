@@ -389,6 +389,74 @@ async def simulate_detection(
         print(f"Error during simulation: {e}")
         return await read_root(request, error_message=f"Error during simulation: {e}", db=db)
 
+
+@app.get("/api/status")
+async def get_server_status(username: str = Depends(get_current_username)):
+    """Returns the operational status of the Hub, database, and system configs."""
+    use_mock_vision = os.getenv("USE_MOCK_VISION", "True")
+    openai_key = os.getenv("OPENAI_API_KEY", "")
+    camera_index = os.getenv("CAMERA_INDEX", "0")
+
+    sys_config_path = get_config_path("system_config.json")
+    if os.path.exists(sys_config_path):
+        try:
+            with open(sys_config_path, "r") as f:
+                cfg = json.load(f)
+                use_mock_vision = cfg.get("USE_MOCK_VISION", use_mock_vision)
+                openai_key = cfg.get("OPENAI_API_KEY", openai_key)
+                camera_index = cfg.get("CAMERA_INDEX", camera_index)
+        except Exception:
+            pass
+
+    inv_path = get_config_path("inventory.json")
+    item_count = 0
+    if os.path.exists(inv_path):
+        try:
+            with open(inv_path, "r") as f:
+                inv = json.load(f)
+                item_count = len(inv.get("items", []))
+        except Exception:
+            pass
+
+    version_str = "0.8.0"
+    v_path = get_config_path("../VERSION.md")
+    if os.path.exists(v_path):
+        try:
+            with open(v_path, "r") as f:
+                version_str = f.read().strip()
+        except Exception:
+            pass
+    elif os.path.exists("VERSION.md"):
+        try:
+            with open("VERSION.md", "r") as f:
+                version_str = f.read().strip()
+        except Exception:
+            pass
+
+    return {
+        "status": "healthy",
+        "service": "Project Sirens Hub",
+        "version": version_str,
+        "mock_vision": str(use_mock_vision).lower() == "true",
+        "camera_index": str(camera_index),
+        "has_openai_key": bool(openai_key),
+        "inventory_item_count": item_count
+    }
+
+
+@app.post("/api/server/shutdown")
+async def shutdown_server(username: str = Depends(get_current_username)):
+    """Gracefully terminates the Hub server process."""
+    def _delayed_exit():
+        import time
+        time.sleep(0.5)
+        os.kill(os.getpid(), signal.SIGTERM)
+
+    import threading
+    threading.Thread(target=_delayed_exit, daemon=True).start()
+    return JSONResponse(status_code=200, content={"status": "shutting_down", "message": "Hub server is shutting down gracefully."})
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
