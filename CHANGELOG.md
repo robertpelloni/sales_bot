@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## [1.1.0] - Dynamic Store Promotions Engine & Retail Prompt Synthesis
+- **Dynamic Store Promotions Backend (`config/inventory.json`, `hub/main.py`)**: Added support for dynamic promotional incentive rules (`rule_name`, `discount_percent`, `trigger_type`, `threshold`, `description`). Implemented `POST /add_promotion` and `POST /delete_promotion/{promo_index}` endpoints using Post/Redirect/Get patterns and UI error handling.
+- **Multimodal Prompt Promotion Synthesis (`src/llm_client.py`)**: Wired promotional rules into `construct_system_prompt()`, enabling autonomous sales agents to inject active discounts into cold-open pitches and dwell-time offers.
+- **Dynamic Promotions Dashboard UI (`hub/templates/index.html`)**: Added dedicated "Active Store Promotions & Dynamic Discounts" management section with promotional badge overlays, trigger conditions, removal actions, and an interactive addition form with tooltip markers.
+- **E2E & Unit Testing Expansion (`tests/test_promotions.py`, `tests/test_api.py`)**: Added tests validating promotional prompt formatting, REST endpoint operations, and updated system status schema reporting `active_promotions_count`.
+
+## [1.0.0] - Multi-Armed Bandit Dynamic A/B Sales Engine & Edge Vision Acceleration
+- **Bayesian Multi-Armed Bandit Core (`hub/ab_engine.py`)**: Implemented `MultiArmedBanditEngine` supporting Thompson Sampling (`random.betavariate(alpha, beta)`) and $\epsilon$-greedy framework allocation over live interaction lead conversions and pitch feedback ratings.
+- **Dynamic Framework Allocation Endpoints (`hub/main.py`)**: Added `GET /api/ab/allocations` returning real-time trial counts, lead win rates, feedback averages, and Beta prior distributions, plus `POST /api/ab/select_framework` for autonomous interaction-time strategy assignment.
+- **Dashboard Optimization UI (`hub/templates/index.html`)**: Added dedicated "Automated A/B Sales Framework Optimization" card displaying live conversion rate pills, Bayesian Beta parameter metrics ($\alpha$, $\beta$), and contextual explanatory tooltips.
+- **Hardware Vision Edge TPU / TFLite Acceleration (`src/vision.py`)**: Enhanced `load_vision_model()` to detect and load Coral Edge TPU models (`yolo11n_edgetpu.tflite` or custom paths) via Ultralytics TFLite backend and direct `tflite_runtime.interpreter.Interpreter` delegate initialization (`libedgetpu.so.1`) before falling back to PyTorch and MockYOLO.
+
 ## [0.9.0] - Multi-Armed Bandit Dynamic A/B Sales Testing Engine
 - **Bayesian Multi-Armed Bandit Core (`hub/ab_engine.py`)**: Implemented `MultiArmedBanditEngine` supporting Thompson Sampling (`random.betavariate(alpha, beta)`) and $\epsilon$-greedy framework allocation over live interaction lead conversions and pitch feedback ratings.
 - **Dynamic Framework Allocation Endpoints (`hub/main.py`)**: Added `GET /api/ab/allocations` returning real-time trial counts, lead win rates, feedback averages, and Beta prior distributions, plus `POST /api/ab/select_framework` for autonomous interaction-time strategy assignment.

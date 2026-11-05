@@ -1,7 +1,26 @@
-# HANDOFF - Project Sirens (v0.9.0)
+# HANDOFF - Project Sirens (v1.1.0)
 
 ## Session Summary & Overview
-In this session, Project Sirens was upgraded through versions **0.7.0**, **0.8.0**, and **0.9.0**, adding real-time WebSocket streaming, core computer vision feature extraction and multimodal Frontier VLM pipelines, and a complete Multi-Armed Bandit Dynamic A/B Sales Framework Optimization Engine.
+In this session, Project Sirens was upgraded across versions **0.7.0**, **0.8.0**, **0.9.0**, **1.0.0**, and **1.1.0**, establishing an enterprise-grade autonomous retail sales bot combining Coral Edge TPU acceleration, real-time WebSocket live CRM feeds, multimodal Frontier VLM pitch synthesis, Bayesian Multi-Armed Bandit dynamic strategy allocation, and an interactive dynamic store promotions engine.
+
+## What Was Accomplished in v1.1.0 (Dynamic Store Promotions & Retail Prompt Synthesis)
+1. **Dynamic Store Promotions Backend (`config/inventory.json`, `hub/main.py`)**:
+   - Structured JSON schema for active store promotions supporting discount percentages, contextual trigger types (`all_items`, `weather_or_apparel`, `dwell_time`, `volume_units`), threshold conditions, and custom pitch descriptions.
+   - Built `POST /add_promotion` and `POST /delete_promotion/{promo_index}` endpoints adhering to Post/Redirect/Get patterns and UI error handling.
+   - Updated `GET /api/status` to expose `active_promotions_count`.
+2. **Autonomous Prompt Promotion Synthesis (`src/llm_client.py`)**:
+   - Integrated active promotion extraction and dynamic formatting inside `construct_system_prompt()`.
+   - Guaranteed cold-open and dwell-time VLM pitches autonomously mention discounts when triggered.
+3. **Dynamic Promotions Dashboard UI (`hub/templates/index.html`)**:
+   - Built a dedicated "Active Store Promotions & Dynamic Discounts" section in the dashboard with discount badges (`X.X% OFF`), trigger tags, remove buttons, and interactive addition form with tooltip markers (`ⓘ`).
+4. **Testing & Visual Verification**:
+   - Added unit and integration tests in `tests/test_promotions.py` and updated `tests/test_api.py`.
+   - Verified frontend rendering visually with Playwright (`/home/jules/verification/promotions_verified.png`).
+   - All 29 unit and integration tests pass cleanly.
+
+## What Was Accomplished in v1.0.0 (Edge Vision Acceleration & Release Finalization)
+- Enhanced `src/vision.py` with Coral Edge TPU TFLite runtime support (`yolo11n_edgetpu.tflite` or custom paths) with Ultralytics backend and `tflite_runtime.interpreter.Interpreter` delegate initialization.
+- Cleaned test artifacts and normalized inventory catalog configuration schemas.
 
 ## What Was Accomplished in v0.9.0 (Multi-Armed Bandit Dynamic A/B Sales Testing Engine)
 1. **Bayesian Bandit Core Engine (`hub/ab_engine.py`)**:

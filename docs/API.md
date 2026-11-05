@@ -25,13 +25,26 @@ Configuration and administration endpoints are protected with HTTP Basic Authent
 {
   "status": "healthy",
   "service": "Project Sirens Hub",
-  "version": "0.8.0",
+  "version": "1.1.0",
   "mock_vision": true,
   "camera_index": "0",
   "has_openai_key": false,
-  "inventory_item_count": 3
+  "inventory_item_count": 2,
+  "active_promotions_count": 2
 }
 ```
+
+### 3. `POST /add_promotion`
+- **Description**: Registers a dynamic promotional discount rule into the active inventory configuration.
+- **Form Parameters**:
+  - `rule_name`: Identifier for the promotion (e.g. `Rainy Day Flash Sale`).
+  - `discount_percent`: Percentage discount offered (0.0 to 100.0).
+  - `trigger_type`: Contextual trigger (`all_items`, `weather_or_apparel`, `dwell_time`, `volume_units`).
+  - `threshold`: Condition requirement (e.g. `outerwear`, `30s`, `2+ units`).
+  - `description`: LLM pitch guidance instructing the model how and when to present the discount.
+
+### 4. `POST /delete_promotion/{promo_index}`
+- **Description**: Removes an active promotion by its zero-based index and redirects back to the dashboard.
 
 ### 3. `WebSocket /ws/events`
 - **Description**: Real-time duplex WebSocket stream. On connection, clients receive live push events broadcast whenever new customer interactions are captured or logged.

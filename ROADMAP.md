@@ -45,6 +45,15 @@
   - High-value dashboard card with live arm win rates and parameter introspection.
   - REST endpoints (`/api/ab/allocations`, `/api/ab/select_framework`) for dynamic kiosk querying.
 
-- Phase 10: Edge Hardware Acceleration & Hailo / TPU Integrations (Planned 1.0.0)
-  - Integrate native Raspberry Pi AI Camera IMX500 hardware neural network models.
-  - Support Coral Edge TPU TFLite runtime models for zero-CPU vision inference.
+- Phase 10: Edge Hardware Acceleration & Coral Edge TPU Support (Completed 1.0.0)
+  - Support Coral Edge TPU TFLite runtime models (`yolo11n_edgetpu.tflite`) via Ultralytics backend and `tflite_runtime.interpreter.Interpreter` delegate initialization.
+  - Hardened MockYOLO fallback for zero-dependency CI execution.
+
+- Phase 11: Dynamic Store Promotions & Retail Prompt Synthesis (Completed 1.1.0)
+  - Dynamic store promotions backend engine with discount rules, threshold conditions, and PRG UI forms.
+  - Autonomous LLM prompt synthesis of active promotional campaigns into cold-open and dwell-time pitches.
+  - Interactive promotions management panel in the consolidated dashboard.
+
+- Phase 12: Multi-Kiosk Fleet Synchronization & Distributed Mesh (Planned 1.2.0)
+  - Distributed SQLite sync via Litestream or Raft-backed Redis cluster across multi-kiosk storefront networks.
+  - Cross-kiosk customer trajectory handover with privacy-preserving appearance embeddings.

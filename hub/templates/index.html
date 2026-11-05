@@ -375,7 +375,7 @@
             <div class="system-status-group">
                 <div class="status-pill">
                     <span class="status-dot"></span>
-                    <span>Hub v1.0.0 Online</span>
+                    <span>Hub v1.1.0 Online</span>
                     <span class="tooltip">ⓘ<span class="tooltiptext">FastAPI asynchronous control server running on port 8000.</span></span>
                 </div>
                 <div class="status-pill" id="ws-pill">
@@ -579,6 +579,56 @@
                         <button type="submit" style="background-color: #f59e0b; white-space: nowrap;">Add Item</button>
                     </div>
                 </form>
+
+                <!-- DYNAMIC PROMOTIONS & DISCOUNTS SECTION -->
+                <div style="margin-top: 24px; padding-top: 16px; border-top: 1px dashed var(--border);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <div style="font-weight: 600; font-size: 0.95em; color: var(--text-main);">
+                            🏷️ Active Store Promotions & Dynamic Discounts
+                        </div>
+                        <span class="tooltip">ⓘ<span class="tooltiptext">Autonomous discounts synthesized dynamically into VLM cold-open pitches and dwell-time triggers.</span></span>
+                    </div>
+
+                    <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px;">
+                        {% for promo in promotions %}
+                        <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 8px 12px; display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <strong style="font-size: 0.85em; color: #166534;">{{ promo.rule_name }}</strong>
+                                <span class="badge" style="background: #dcfce7; color: #15803d; font-size: 0.75em; margin-left: 6px;">{{ promo.discount_percent }}% OFF</span>
+                                <span style="font-size: 0.75em; color: #047857; margin-left: 4px;">Trigger: {{ promo.trigger_type }}{% if promo.threshold %} ({{ promo.threshold }}){% endif %}</span>
+                                <div style="font-size: 0.75em; color: #4b5563; margin-top: 2px;">{{ promo.description }}</div>
+                            </div>
+                            <form method="post" action="/delete_promotion/{{ loop.index0 }}" style="margin: 0;">
+                                <button type="submit" class="btn-danger" style="padding: 2px 7px; font-size: 0.7em;" title="Remove promotion">✕</button>
+                            </form>
+                        </div>
+                        {% else %}
+                        <p style="color: var(--text-muted); font-size: 0.82em; font-style: italic; margin: 0;">No active promotions configured.</p>
+                        {% endfor %}
+                    </div>
+
+                    <!-- Add Promotion Form -->
+                    <form method="post" action="/add_promotion" style="background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid var(--border);">
+                        <div style="font-weight: 600; font-size: 0.82em; margin-bottom: 8px; color: var(--text-main);">+ Add Promotional Incentive Rule</div>
+                        <div class="split-2" style="margin-bottom: 8px;">
+                            <input type="text" name="rule_name" placeholder="Rule Name (e.g. Rainy Day Flash)" required>
+                            <input type="number" step="0.5" min="1" max="90" name="discount_percent" placeholder="Discount % (e.g. 15)" required>
+                        </div>
+                        <div class="split-2" style="margin-bottom: 8px;">
+                            <select name="trigger_type" required>
+                                <option value="weather_or_apparel">Trigger: Apparel / Weather Cues</option>
+                                <option value="dwell_time">Trigger: Dwell Time Duration</option>
+                                <option value="all_items">Trigger: Universal Store Promotion</option>
+                                <option value="volume_units">Trigger: Multi-Unit Purchase</option>
+                            </select>
+                            <input type="text" name="threshold" placeholder="Threshold (e.g. outerwear, 30s, 2+ units)">
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <input type="text" name="description" placeholder="Prompt guidance for LLM pitch" style="flex-grow: 1;">
+                            <button type="submit" style="background-color: #059669; color: white; white-space: nowrap;">Save Rule</button>
+                        </div>
+                    </form>
+                </div>
             </div>
 
             <!-- AGENT SALES PSYCHOLOGY & SYSTEM SETTINGS -->

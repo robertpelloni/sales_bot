@@ -12,12 +12,28 @@
     },
     {
       "product_name": "SonicStride Pro Runners",
-      "price_usd": 159.00,
+      "price_usd": 159.0,
       "unique_selling_points": [
         "Kinetic energy return soles",
         "Seamless breathable knit upper",
         "All-day arch support"
       ]
+    }
+  ],
+  "promotions": [
+    {
+      "rule_name": "Rainy Day Flash Sale",
+      "discount_percent": 15.0,
+      "trigger_type": "weather_or_apparel",
+      "threshold": "outerwear",
+      "description": "15% off all performance jackets when customers are detected wearing rain or cold outerwear."
+    },
+    {
+      "rule_name": "Dwell Engagement Bundle",
+      "discount_percent": 20.0,
+      "trigger_type": "dwell_time",
+      "threshold": "30s",
+      "description": "20% off when customer explores the kiosk for more than 30 seconds."
     }
   ]
 }

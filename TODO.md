@@ -30,10 +30,20 @@
 - [x] Add high-value dashboard optimization card with live win rate badges and parameter metrics.
 - [x] Visual Playwright verification and unit/integration tests (`tests/test_ab_engine.py`, `tests/test_api.py`).
 
-## Short-Term (1.0.0)
-- [ ] Implement Coral Edge TPU compiled TFLite model runner for YOLOv11n in `src/vision.py`.
-- [ ] Add dynamic discount rule builder to the Inventory panel for automated volume pricing.
+## Completed in 1.0.0
+- [x] Implement Multi-Armed Bandit engine (`hub/ab_engine.py`) with Thompson Sampling and $\epsilon$-greedy strategies.
+- [x] Implement Coral Edge TPU compiled TFLite model runner for YOLOv11n in `src/vision.py` with Ultralytics and `tflite_runtime` delegate fallbacks.
+- [x] Integrate REST endpoints (`/api/ab/allocations`, `/api/ab/select_framework`) and dashboard card.
 
-## Long-Term (1.1.0+)
-- [ ] Multi-kiosk fleet synchronization via central Redis clustering or gRPC mesh.
+## Completed in 1.1.0
+- [x] Add dynamic promotional discount rule builder to the Inventory panel for automated volume and condition-triggered pricing.
+- [x] Integrate active promotional campaigns into LLM sales prompt synthesis (`src/llm_client.py`).
+- [x] Add interactive promotion management UI in dashboard with badges, trigger tags, and tooltip guidance.
+- [x] Add Playwright visual verification and test suite expansion (`tests/test_promotions.py`, `tests/test_api.py`).
+
+## Short-Term (1.2.0)
 - [ ] Multi-armed bandit reward convergence on customer dwell time alongside explicit lead conversion.
+- [ ] Export CRM lead interactions to CSV and external webhook integrations.
+
+## Long-Term (1.3.0+)
+- [ ] Multi-kiosk fleet synchronization via central Redis clustering or gRPC mesh.

@@ -118,6 +118,7 @@ async def log_interaction(interaction: InteractionCreate, db: AsyncSession = Dep
 async def read_root(request: Request, simulated_response: str = "", error_message: str = "", db: AsyncSession = Depends(get_db), username: str = Depends(get_current_username)):
     store_name = ""
     items = []
+    promotions = []
     sales_framework = ""
     tactics_enforced = []
     constraints = []
@@ -129,6 +130,7 @@ async def read_root(request: Request, simulated_response: str = "", error_messag
                 inv = json.load(f)
                 store_name = inv.get("store_name", "")
                 items = inv.get("items", [])
+                promotions = inv.get("promotions", [])
 
         pm_path = get_config_path("prompt_modifiers.json")
         if pm_path:
@@ -188,6 +190,7 @@ async def read_root(request: Request, simulated_response: str = "", error_messag
         "framework_leads": json.dumps(framework_leads),
         "store_name": store_name,
         "items": items,
+        "promotions": promotions,
         "sales_framework": sales_framework,
         "tactics_enforced": tactics_enforced,
         "constraints": constraints,
@@ -287,6 +290,70 @@ async def add_item(request: Request, product_name: str = Form(...), price_usd: f
     except Exception as e:
         print(f"Error adding item: {e}")
         return await read_root(request, error_message=f"Error adding item: {e}", db=db)
+
+    return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
+
+@app.post("/add_promotion")
+async def add_promotion(
+    request: Request,
+    rule_name: str = Form(...),
+    discount_percent: float = Form(...),
+    trigger_type: str = Form(...),
+    threshold: str = Form(""),
+    description: str = Form(""),
+    db: AsyncSession = Depends(get_db),
+    username: str = Depends(get_current_username)
+):
+    """Adds a dynamic promotional discount rule to inventory configuration."""
+    try:
+        inv_path = get_config_path("inventory.json")
+        inv = {"store_name": "", "items": [], "promotions": []}
+        if os.path.exists(inv_path):
+            with open(inv_path, "r") as f:
+                inv = json.load(f)
+
+        if "promotions" not in inv or not isinstance(inv["promotions"], list):
+            inv["promotions"] = []
+
+        new_promo = {
+            "rule_name": rule_name.strip(),
+            "discount_percent": float(discount_percent),
+            "trigger_type": trigger_type.strip(),
+            "threshold": threshold.strip(),
+            "description": description.strip()
+        }
+        inv["promotions"].append(new_promo)
+
+        with open(inv_path, "w") as f:
+            json.dump(inv, f, indent=2)
+    except Exception as e:
+        print(f"Error adding promotion: {e}")
+        return await read_root(request, error_message=f"Error adding promotion: {e}", db=db)
+
+    return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
+
+@app.post("/delete_promotion/{promo_index}")
+async def delete_promotion(
+    request: Request,
+    promo_index: int,
+    db: AsyncSession = Depends(get_db),
+    username: str = Depends(get_current_username)
+):
+    """Deletes an active promotional rule by its index."""
+    try:
+        inv_path = get_config_path("inventory.json")
+        if os.path.exists(inv_path):
+            with open(inv_path, "r") as f:
+                inv = json.load(f)
+
+            if "promotions" in inv and 0 <= promo_index < len(inv["promotions"]):
+                inv["promotions"].pop(promo_index)
+
+            with open(inv_path, "w") as f:
+                json.dump(inv, f, indent=2)
+    except Exception as e:
+        print(f"Error deleting promotion: {e}")
+        return await read_root(request, error_message=f"Error deleting promotion: {e}", db=db)
 
     return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
 
@@ -474,11 +541,13 @@ async def get_server_status(username: str = Depends(get_current_username)):
 
     inv_path = get_config_path("inventory.json")
     item_count = 0
+    promotions_count = 0
     if os.path.exists(inv_path):
         try:
             with open(inv_path, "r") as f:
                 inv = json.load(f)
                 item_count = len(inv.get("items", []))
+                promotions_count = len(inv.get("promotions", []))
         except Exception:
             pass
 
@@ -499,7 +568,8 @@ async def get_server_status(username: str = Depends(get_current_username)):
         "mock_vision": str(use_mock_vision).lower() == "true",
         "camera_index": str(camera_index),
         "has_openai_key": bool(openai_key),
-        "inventory_item_count": item_count
+        "inventory_item_count": item_count,
+        "active_promotions_count": promotions_count
     }
 
 
