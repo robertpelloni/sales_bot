@@ -1,6 +1,6 @@
 # MEMORY
 
-- Using Python 3.11+ (tested on Python 3.12.13)
+- Using Python 3.11+
 - Edge-Cloud Split Architecture
 - Redis pub/sub broker for inter-process communication
 - Privacy Directive: Never save images or video frames to disk. Delete bounding box memory buffers every 60 seconds.
@@ -8,6 +8,3 @@
 - `OPENAI_API_KEY` and `USE_MOCK_VISION` are toggled at runtime via the `hub` API (`/update_system_config`), persisting across app states without requiring `.env` hardcoding.
 - Pytest environments require active pruning of dynamic `os.environ` keys so LLM logic doesn't override mocks unexpectedly.
 - Submodules (`vendor/piper`, `vendor/yolov11-edge`) must be updated recursively whenever major architectural branch changes are merged to prevent orphaned paths.
-- FastAPI lifespan handlers `@asynccontextmanager lifespan` are used to prevent deprecation warnings and handle async db migrations cleanly.
-- System Tray Controller (`src/tray_app.py`) provides headless fallback when `DISPLAY` is unavailable or `pystray` cannot bind to Xorg.
-- Database access uses `aiosqlite` with `AsyncSession` and `PRAGMA journal_mode=WAL` for high concurrency without blocking the event loop.

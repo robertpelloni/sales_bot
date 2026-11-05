@@ -5,12 +5,9 @@ import json
 # Ensure project root is in sys.path so we can import src modules globally
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from contextlib import asynccontextmanager
-import signal
-from typing import List
-from fastapi import FastAPI, Request, Form, Depends, HTTPException, status, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Request, Form, Depends, HTTPException, status
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import HTMLResponse
 import secrets
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
@@ -18,36 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import func, Integer, select
 from .database import get_db, init_db, Interaction
 
-
-class ConnectionManager:
-    """Manages active WebSocket connections for broadcasting real-time dashboard events."""
-    def __init__(self):
-        self.active_connections: List[WebSocket] = []
-
-    async def connect(self, websocket: WebSocket):
-        await websocket.accept()
-        self.active_connections.append(websocket)
-
-    def disconnect(self, websocket: WebSocket):
-        if websocket in self.active_connections:
-            self.active_connections.remove(websocket)
-
-    async def broadcast(self, message: dict):
-        for connection in list(self.active_connections):
-            try:
-                await connection.send_json(message)
-            except Exception:
-                self.disconnect(connection)
-
-
-ws_manager = ConnectionManager()
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    await init_db()
-    yield
-
-app = FastAPI(title="Project Sirens Dashboard", lifespan=lifespan)
+app = FastAPI(title="Project Sirens Dashboard")
 security = HTTPBasic()
 
 def get_current_username(credentials: HTTPBasicCredentials = Depends(security)):
@@ -60,6 +28,10 @@ def get_current_username(credentials: HTTPBasicCredentials = Depends(security)):
             headers={"WWW-Authenticate": "Basic"},
         )
     return credentials.username
+
+@app.on_event("startup")
+async def on_startup():
+    await init_db()
 
 os.makedirs("hub/templates", exist_ok=True)
 
@@ -90,23 +62,6 @@ async def log_interaction(interaction: InteractionCreate, db: AsyncSession = Dep
         db.add(db_interaction)
         await db.commit()
         await db.refresh(db_interaction)
-
-        # Broadcast event to connected WebSocket dashboards
-        await ws_manager.broadcast({
-            "event": "NEW_INTERACTION",
-            "data": {
-                "id": db_interaction.id,
-                "timestamp": db_interaction.timestamp.strftime('%Y-%m-%d %H:%M'),
-                "attributes": db_interaction.attributes,
-                "response": db_interaction.response,
-                "sales_framework": db_interaction.sales_framework,
-                "tts_latency_ms": db_interaction.tts_latency_ms,
-                "is_lead": db_interaction.is_lead,
-                "follow_up_notes": db_interaction.follow_up_notes,
-                "feedback_score": db_interaction.feedback_score
-            }
-        })
-
         return {"status": "success", "id": db_interaction.id}
     except Exception as e:
         await db.rollback()
@@ -117,7 +72,6 @@ async def log_interaction(interaction: InteractionCreate, db: AsyncSession = Dep
 async def read_root(request: Request, simulated_response: str = "", error_message: str = "", db: AsyncSession = Depends(get_db), username: str = Depends(get_current_username)):
     store_name = ""
     items = []
-    promotions = []
     sales_framework = ""
     tactics_enforced = []
     constraints = []
@@ -129,7 +83,6 @@ async def read_root(request: Request, simulated_response: str = "", error_messag
                 inv = json.load(f)
                 store_name = inv.get("store_name", "")
                 items = inv.get("items", [])
-                promotions = inv.get("promotions", [])
 
         pm_path = get_config_path("prompt_modifiers.json")
         if pm_path:
@@ -151,7 +104,7 @@ async def read_root(request: Request, simulated_response: str = "", error_messag
 
     # Generate Chart Data
     import datetime
-    today = datetime.datetime.now(datetime.UTC).date()
+    today = datetime.datetime.utcnow().date()
     dates = [(today - datetime.timedelta(days=i)) for i in range(7)]
     dates.reverse() # past to present
 
@@ -186,7 +139,6 @@ async def read_root(request: Request, simulated_response: str = "", error_messag
         "framework_leads": json.dumps(framework_leads),
         "store_name": store_name,
         "items": items,
-        "promotions": promotions,
         "sales_framework": sales_framework,
         "tactics_enforced": tactics_enforced,
         "constraints": constraints,
@@ -268,7 +220,7 @@ async def delete_item(request: Request, product_name: str = Form(...), db: Async
 async def add_item(request: Request, product_name: str = Form(...), price_usd: float = Form(...), usps: str = Form(...), db: AsyncSession = Depends(get_db), username: str = Depends(get_current_username)):
     try:
         inv_path = get_config_path("inventory.json")
-        inv = {"store_name": "", "items": [], "promotions": []}
+        inv = {"store_name": "", "items": []}
         if os.path.exists(inv_path):
             with open(inv_path, "r") as f:
                 inv = json.load(f)
@@ -278,74 +230,13 @@ async def add_item(request: Request, product_name: str = Form(...), price_usd: f
             "price_usd": price_usd,
             "unique_selling_points": [usp.strip() for usp in usps.split(",") if usp.strip()]
         }
-        inv.setdefault("items", []).append(new_item)
+        inv["items"].append(new_item)
 
         with open(inv_path, "w") as f:
             json.dump(inv, f, indent=2)
     except Exception as e:
         print(f"Error adding item: {e}")
         return await read_root(request, error_message=f"Error adding item: {e}", db=db)
-
-    return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
-
-@app.post("/add_promotion")
-async def add_promotion(
-    request: Request,
-    rule_name: str = Form(...),
-    discount_percent: int = Form(...),
-    trigger_type: str = Form(...),
-    threshold: int = Form(1),
-    description: str = Form(""),
-    db: AsyncSession = Depends(get_db),
-    username: str = Depends(get_current_username)
-):
-    try:
-        inv_path = get_config_path("inventory.json")
-        inv = {"store_name": "", "items": [], "promotions": []}
-        if os.path.exists(inv_path):
-            with open(inv_path, "r") as f:
-                inv = json.load(f)
-
-        new_promo = {
-            "rule_name": rule_name.strip(),
-            "discount_percent": int(discount_percent),
-            "trigger_type": trigger_type.strip(),
-            "threshold": int(threshold),
-            "description": description.strip()
-        }
-        inv.setdefault("promotions", []).append(new_promo)
-
-        with open(inv_path, "w") as f:
-            json.dump(inv, f, indent=2)
-    except Exception as e:
-        print(f"Error adding promotion: {e}")
-        return await read_root(request, error_message=f"Error adding promotion: {e}", db=db)
-
-    return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
-
-@app.post("/delete_promotion/{promo_index}")
-async def delete_promotion(
-    request: Request,
-    promo_index: int,
-    db: AsyncSession = Depends(get_db),
-    username: str = Depends(get_current_username)
-):
-    try:
-        inv_path = get_config_path("inventory.json")
-        if os.path.exists(inv_path):
-            with open(inv_path, "r") as f:
-                inv = json.load(f)
-
-            promotions = inv.get("promotions", [])
-            if 0 <= promo_index < len(promotions):
-                promotions.pop(promo_index)
-                inv["promotions"] = promotions
-
-                with open(inv_path, "w") as f:
-                    json.dump(inv, f, indent=2)
-    except Exception as e:
-        print(f"Error deleting promotion: {e}")
-        return await read_root(request, error_message=f"Error deleting promotion: {e}", db=db)
 
     return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
 
@@ -470,20 +361,6 @@ async def submit_feedback(request: Request, interaction_id: int, feedback_score:
     return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
 
 
-@app.websocket("/ws/events")
-async def websocket_events_endpoint(websocket: WebSocket):
-    """Real-time event stream for connected dashboard sessions."""
-    await ws_manager.connect(websocket)
-    try:
-        while True:
-            # Keep connection alive; accept client pings/messages
-            await websocket.receive_text()
-    except WebSocketDisconnect:
-        ws_manager.disconnect(websocket)
-    except Exception:
-        ws_manager.disconnect(websocket)
-
-
 @app.post("/simulate_detection")
 async def simulate_detection(
     request: Request,
@@ -511,59 +388,6 @@ async def simulate_detection(
     except Exception as e:
         print(f"Error during simulation: {e}")
         return await read_root(request, error_message=f"Error during simulation: {e}", db=db)
-
-
-@app.get("/api/status")
-async def get_server_status(username: str = Depends(get_current_username)):
-    """Returns the operational status of the Hub, database, and system configs."""
-    use_mock_vision = os.getenv("USE_MOCK_VISION", "True")
-    openai_key = os.getenv("OPENAI_API_KEY", "")
-    camera_index = os.getenv("CAMERA_INDEX", "0")
-
-    sys_config_path = get_config_path("system_config.json")
-    if os.path.exists(sys_config_path):
-        try:
-            with open(sys_config_path, "r") as f:
-                cfg = json.load(f)
-                use_mock_vision = cfg.get("USE_MOCK_VISION", use_mock_vision)
-                openai_key = cfg.get("OPENAI_API_KEY", openai_key)
-                camera_index = cfg.get("CAMERA_INDEX", camera_index)
-        except Exception:
-            pass
-
-    inv_path = get_config_path("inventory.json")
-    item_count = 0
-    if os.path.exists(inv_path):
-        try:
-            with open(inv_path, "r") as f:
-                inv = json.load(f)
-                item_count = len(inv.get("items", []))
-        except Exception:
-            pass
-
-    return {
-        "status": "healthy",
-        "service": "Project Sirens Hub",
-        "version": "0.6.0",
-        "mock_vision": str(use_mock_vision).lower() == "true",
-        "camera_index": str(camera_index),
-        "has_openai_key": bool(openai_key),
-        "inventory_item_count": item_count
-    }
-
-
-@app.post("/api/server/shutdown")
-async def shutdown_server(username: str = Depends(get_current_username)):
-    """Gracefully terminates the Hub server process."""
-    def _delayed_exit():
-        import time
-        time.sleep(0.5)
-        os.kill(os.getpid(), signal.SIGTERM)
-
-    import threading
-    threading.Thread(target=_delayed_exit, daemon=True).start()
-    return JSONResponse(status_code=200, content={"status": "shutting_down", "message": "Hub server is shutting down gracefully."})
-
 
 if __name__ == "__main__":
     import uvicorn

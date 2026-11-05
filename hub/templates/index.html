@@ -1,776 +1,324 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Project Sirens | Autonomous Retail Intelligence Hub</title>
+    <title>Project Sirens - Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        :root {
-            --primary: #2563eb;
-            --primary-hover: #1d4ed8;
-            --bg-body: #f8fafc;
-            --bg-card: #ffffff;
-            --text-main: #0f172a;
-            --text-muted: #64748b;
-            --border: #e2e8f0;
-            --success: #16a34a;
-            --danger: #dc2626;
-            --warning: #d97706;
-            --info: #0284c7;
-        }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background-color: #f0f2f5; color: #333; }
+        .container { max-width: 1400px; margin: auto; }
+        h1 { color: #2c3e50; text-align: center; margin-bottom: 30px; font-size: 2.5em; text-shadow: 1px 1px 2px rgba(0,0,0,0.1); }
+        h2 { color: #34495e; border-bottom: 2px solid #3498db; padding-bottom: 8px; margin-top: 0; font-size: 1.5em; }
+        h3 { color: #455a64; font-size: 1.2em; margin-top: 20px; margin-bottom: 10px; }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            margin: 0;
-            padding: 24px;
-            background-color: var(--bg-body);
-            color: var(--text-main);
-            line-height: 1.5;
-        }
+        /* Grid Layout */
+        .dashboard-grid { display: grid; grid-template-columns: 1fr 1fr; grid-gap: 25px; }
+        .column { display: flex; flex-direction: column; gap: 25px; }
+        .full-width { grid-column: 1 / -1; }
 
-        .container {
-            max-width: 1440px;
-            margin: 0 auto;
-        }
+        .section { padding: 25px; border: 1px solid #e1e4e8; background-color: #ffffff; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); transition: transform 0.2s ease, box-shadow 0.2s ease; }
+        .section:hover { box-shadow: 0 6px 12px rgba(0,0,0,0.08); }
 
-        /* Top Header & System Status Bar */
-        .header-bar {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 16px 24px;
-            margin-bottom: 24px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 16px;
-        }
+        .form-group { margin-bottom: 18px; }
+        label { display: block; font-weight: 600; margin-bottom: 6px; color: #2c3e50; }
+        .desc { font-size: 0.85em; color: #7f8c8d; margin-bottom: 8px; font-style: italic; }
+        input[type="text"], input[type="number"], textarea, select { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #cbd5e0; border-radius: 6px; font-family: inherit; transition: border-color 0.2s; }
+        input[type="text"]:focus, input[type="number"]:focus, textarea:focus, select:focus { outline: none; border-color: #3498db; box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2); }
 
-        .header-title {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
+        button { padding: 10px 18px; background-color: #3498db; color: white; border: none; cursor: pointer; border-radius: 6px; font-weight: 600; transition: background-color 0.2s, transform 0.1s; }
+        button:hover { background-color: #2980b9; transform: translateY(-1px); }
+        button:active { transform: translateY(0); }
+        .btn-danger { background-color: #e74c3c; }
+        .btn-danger:hover { background-color: #c0392b; }
 
-        .header-title h1 {
-            margin: 0;
-            font-size: 1.6em;
-            color: var(--text-main);
-            letter-spacing: -0.5px;
-        }
+        .tooltip { position: relative; display: inline-block; cursor: help; color: #3498db; margin-left: 5px; font-size: 0.9em; }
+        .tooltip .tooltiptext { visibility: hidden; width: 280px; background-color: #34495e; color: #fff; text-align: left; border-radius: 6px; padding: 12px; position: absolute; z-index: 10; bottom: 125%; left: 50%; margin-left: -140px; opacity: 0; transition: opacity 0.3s; font-size: 0.9em; font-weight: normal; box-shadow: 0 4px 8px rgba(0,0,0,0.2); pointer-events: none; }
+        .tooltip .tooltiptext::after { content: ""; position: absolute; top: 100%; left: 50%; margin-left: -5px; border-width: 5px; border-style: solid; border-color: #34495e transparent transparent transparent; }
+        .tooltip:hover .tooltiptext { visibility: visible; opacity: 1; }
 
-        .system-status-group {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-            flex-wrap: wrap;
-        }
+        .item-card { border: 1px solid #e1e4e8; padding: 15px; margin-bottom: 15px; border-radius: 8px; background: #f8fafc; transition: background-color 0.2s; }
+        .item-card:hover { background: #f1f5f9; }
+        .list-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; background: #f8fafc; border: 1px solid #e1e4e8; margin-bottom: 8px; border-radius: 6px; }
 
-        .status-pill {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 0.85em;
-            font-weight: 600;
-            padding: 5px 12px;
-            border-radius: 9999px;
-            background: #f1f5f9;
-            color: var(--text-muted);
-            border: 1px solid var(--border);
-        }
+        /* Highlight High Value Section */
+        .highlight-section { border: 2px solid #3498db; background-color: #f0f8ff; }
+        .highlight-section h2 { border-bottom-color: #2980b9; color: #2980b9; }
 
-        .status-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: var(--success);
-        }
+        .interaction-log-container { max-height: 400px; overflow-y: auto; padding-right: 10px; }
+        .interaction-log-container::-webkit-scrollbar { width: 8px; }
+        .interaction-log-container::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+        .interaction-log-container::-webkit-scrollbar-thumb { background: #cbd5e0; border-radius: 4px; }
+        .interaction-log-container::-webkit-scrollbar-thumb:hover { background: #a0aec0; }
 
-        .status-dot.warning { background: var(--warning); }
-        .status-dot.danger { background: var(--danger); }
+        .response-box { margin-top: 8px; padding: 12px; border-left: 4px solid #3498db; background: #ffffff; border-radius: 0 4px 4px 0; font-style: italic; }
 
-        /* Unified Grid */
-        .dashboard-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            grid-gap: 24px;
-        }
+        .inline-form { display: flex; gap: 10px; align-items: flex-end; }
+        .inline-form .form-group { margin-bottom: 0; flex-grow: 1; }
 
-        .full-width {
-            grid-column: 1 / -1;
-        }
-
-        .card {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 24px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-            display: flex;
-            flex-direction: column;
-        }
-
-        .card-high-value {
-            border: 2px solid #93c5fd;
-            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.08);
-            background: #ffffff;
-        }
-
-        .card-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 18px;
-            padding-bottom: 12px;
-            border-bottom: 1px solid var(--border);
-        }
-
-        .card-header h2 {
-            margin: 0;
-            font-size: 1.25em;
-            color: var(--text-main);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        /* Tooltip styling */
-        .tooltip {
-            position: relative;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            cursor: help;
-            color: var(--primary);
-            font-size: 0.85em;
-            font-weight: bold;
-        }
-
-        .tooltip .tooltiptext {
-            visibility: hidden;
-            width: 280px;
-            background-color: #1e293b;
-            color: #ffffff;
-            text-align: left;
-            border-radius: 6px;
-            padding: 10px 14px;
-            position: absolute;
-            z-index: 50;
-            bottom: 130%;
-            left: 50%;
-            transform: translateX(-50%);
-            opacity: 0;
-            transition: opacity 0.2s;
-            font-size: 0.85em;
-            font-weight: normal;
-            line-height: 1.4;
-            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
-            pointer-events: none;
-        }
-
-        .tooltip .tooltiptext::after {
-            content: "";
-            position: absolute;
-            top: 100%;
-            left: 50%;
-            margin-left: -6px;
-            border-width: 6px;
-            border-style: solid;
-            border-color: #1e293b transparent transparent transparent;
-        }
-
-        .tooltip:hover .tooltiptext {
-            visibility: visible;
-            opacity: 1;
-        }
-
-        /* Forms & Inputs */
-        .form-group {
-            margin-bottom: 16px;
-        }
-
-        label {
-            display: block;
-            font-weight: 600;
-            font-size: 0.9em;
-            margin-bottom: 6px;
-            color: var(--text-main);
-        }
-
-        .desc {
-            font-size: 0.8em;
-            color: var(--text-muted);
-            margin-bottom: 6px;
-        }
-
-        input[type="text"], input[type="number"], select, textarea {
-            width: 100%;
-            padding: 9px 12px;
-            box-sizing: border-box;
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            font-family: inherit;
-            font-size: 0.9em;
-            color: var(--text-main);
-            background: #ffffff;
-            transition: border-color 0.15s, box-shadow 0.15s;
-        }
-
-        input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:focus {
-            outline: none;
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
-        }
-
-        button {
-            padding: 9px 16px;
-            background-color: var(--primary);
-            color: #ffffff;
-            border: none;
-            cursor: pointer;
-            border-radius: 6px;
-            font-weight: 600;
-            font-size: 0.9em;
-            transition: background-color 0.15s;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-        }
-
-        button:hover {
-            background-color: var(--primary-hover);
-        }
-
-        .btn-danger {
-            background-color: var(--danger);
-        }
-
-        .btn-danger:hover {
-            background-color: #b91c1c;
-        }
-
-        .btn-success {
-            background-color: var(--success);
-        }
-
-        .btn-success:hover {
-            background-color: #15803d;
-        }
-
-        .btn-secondary {
-            background-color: #64748b;
-        }
-
-        .btn-secondary:hover {
-            background-color: #475569;
-        }
-
-        /* Feeds & Scrollables */
-        .scrollable-feed {
-            max-height: 480px;
-            overflow-y: auto;
-            padding-right: 6px;
-        }
-
-        .scrollable-feed::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        .scrollable-feed::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
-            border-radius: 3px;
-        }
-
-        .item-card {
-            border: 1px solid var(--border);
-            padding: 14px;
-            margin-bottom: 12px;
-            border-radius: 8px;
-            background: #ffffff;
-            transition: border-color 0.15s;
-        }
-
-        .item-card:hover {
-            border-color: #94a3b8;
-        }
-
-        .lead-card {
-            border-left: 4px solid var(--success);
-        }
-
-        .response-quote {
-            margin: 8px 0;
-            padding: 10px 14px;
-            border-left: 3px solid var(--primary);
-            background: #eff6ff;
-            border-radius: 0 6px 6px 0;
-            font-style: italic;
-            font-size: 0.95em;
-            color: #1e3a8a;
-        }
-
-        .badge {
-            display: inline-block;
-            padding: 3px 8px;
-            border-radius: 9999px;
-            font-size: 0.75em;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .badge-lead {
-            background: #dcfce7;
-            color: #15803d;
-            border: 1px solid #bbf7d0;
-        }
-
-        .badge-sim {
-            background: #e0f2fe;
-            color: #0369a1;
-            border: 1px solid #bae6fd;
-        }
-
-        .alert-banner {
-            background-color: #fee2e2;
-            border-left: 4px solid var(--danger);
-            color: #991b1b;
-            padding: 12px 16px;
-            margin-bottom: 20px;
-            border-radius: 6px;
-            font-weight: 500;
-        }
-
-        /* Sub-grid layouts */
-        .split-2 {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 16px;
-        }
-
-        .split-3 {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 16px;
-        }
-
-        @media (max-width: 1024px) {
-            .dashboard-grid, .split-2, .split-3 {
-                grid-template-columns: 1fr;
-            }
-        }
+        /* Badges */
+        .badge { display: inline-block; padding: 4px 8px; border-radius: 12px; font-size: 0.8em; font-weight: bold; background-color: #e2e8f0; color: #4a5568; margin-left: 10px; vertical-align: middle; }
+        .badge-primary { background-color: #ebf8ff; color: #2b6cb0; border: 1px solid #bee3f8; }
     </style>
 </head>
 <body>
     <div class="container">
-        <!-- TOP HEADER & CONTROLS -->
-        <header class="header-bar">
-            <div class="header-title">
-                <h1>⚡ Project Sirens <span style="font-weight: 300; font-size: 0.75em; color: var(--text-muted);">| Autonomous Retail Engine</span></h1>
-            </div>
-            <div class="system-status-group">
-                <div class="status-pill">
-                    <span class="status-dot"></span>
-                    <span>Hub v0.8.0 Online</span>
-                    <span class="tooltip">ⓘ<span class="tooltiptext">FastAPI asynchronous control server running on port 8000.</span></span>
-                </div>
-                <div class="status-pill" id="ws-pill">
-                    <span class="status-dot" id="ws-dot" style="background: var(--warning);"></span>
-                    <span id="ws-status-text">WS Stream: Connecting</span>
-                    <span class="tooltip">ⓘ<span class="tooltiptext">Real-time WebSocket connection to /ws/events for live in-store stream without refreshes.</span></span>
-                </div>
-                <div class="status-pill">
-                    <span class="status-dot {% if use_mock_vision == 'True' %}warning{% endif %}"></span>
-                    <span>Vision: {% if use_mock_vision == 'True' %}Mock Mode{% else %}Cam ({{ camera_index }}){% endif %}</span>
-                    <span class="tooltip">ⓘ<span class="tooltiptext">Vision status: Mock Mode simulates passersby without hardware; Live mode reads from /dev/video.</span></span>
-                </div>
-                <div class="status-pill">
-                    <span class="status-dot {% if not openai_api_key %}danger{% endif %}"></span>
-                    <span>LLM Engine: {% if openai_api_key %}Ready (VLM API){% else %}Missing Key{% endif %}</span>
-                    <span class="tooltip">ⓘ<span class="tooltiptext">Streaming VLM Frontier model status. Requires an OpenAI API Key configured below.</span></span>
-                </div>
-                <form method="post" action="/api/server/shutdown" onsubmit="return confirm('Gracefully shutdown Hub server process?');" style="margin: 0;">
-                    <button type="submit" class="btn-danger" style="padding: 6px 12px; font-size: 0.8em;" title="Stop the server safely">
-                        Quit Server ⏻
-                    </button>
-                </form>
-            </div>
-        </header>
+        <h1>Project Sirens <span style="font-weight: 300; color: #7f8c8d;">| Intelligence Dashboard</span></h1>
 
         {% if error_message %}
-        <div class="alert-banner">
-            ⚠️ <strong>Error:</strong> {{ error_message }}
+        <div style="background-color: #fef0f0; border-left: 5px solid #f56c6c; color: #c0392b; padding: 15px; margin-bottom: 25px; border-radius: 4px; font-weight: bold;">
+            Error: {{ error_message }}
         </div>
         {% endif %}
 
-        <!-- MAIN TWO-COLUMN DASHBOARD GRID -->
-        <main class="dashboard-grid">
+        <div class="dashboard-grid">
 
-            <!-- HIGH-PRIORITY COLUMN 1: LIVE SIMULATION & REAL-TIME RESPONSE GENERATION -->
-            <div class="card card-high-value">
-                <div class="card-header">
-                    <h2>🎯 Simulation & Cold-Open Engine <span class="badge badge-sim">High Value</span></h2>
-                    <span class="tooltip">ⓘ<span class="tooltiptext">The core real-time behavioral testing studio. Test customer detections directly against the dynamic prompt rules and inventory without needing physical passersby.</span></span>
-                </div>
+            <!-- LEFT COLUMN: Operations & Logs (High Value) -->
+            <div class="column">
 
-                <form method="post" action="/simulate_detection">
-                    <div class="form-group">
-                        <label for="attributes">Simulated Customer Profile Attributes
-                            <span class="tooltip">ⓘ<span class="tooltiptext">Macro visual attributes detected by YOLOv11n (e.g. clothing color, carried bags, posture). Strict privacy constraint: no facial tags or brand names.</span></span>
-                        </label>
-                        <div class="desc">Detected visual features sent into the frontier VLM context prompt.</div>
-                        <input type="text" id="attributes" name="attributes" value="navy blue windbreaker, baseball cap, holding coffee" required>
-                    </div>
-
-                    <div class="split-2">
+                <!-- Simulation Engine -->
+                <div class="section highlight-section">
+                    <h2>Simulate Detection <span class="badge badge-primary">Active</span> <span class="tooltip">ⓘ<span class="tooltiptext">The core testing engine. Simulate what the vision system sees to instantly test the agent's generated response based on your current settings, inventory, and tactics.</span></span></h2>
+                    <form method="post" action="/simulate_detection">
                         <div class="form-group">
-                            <label for="system_prompt_override">Prompt Override (A/B Test)
-                                <span class="tooltip">ⓘ<span class="tooltiptext">Optional: enter a bespoke system prompt to override the store's configured psychology for rapid A/B testing.</span></span>
-                            </label>
-                            <input type="text" id="system_prompt_override" name="system_prompt_override" placeholder="Leave empty to use active store rules...">
+                            <label for="attributes">Customer Attributes</label>
+                            <div class="desc">Comma-separated traits the mock vision system passes to the LLM.</div>
+                            <input type="text" id="attributes" name="attributes" value="navy blue windbreaker, baseball cap, holding coffee" required>
                         </div>
-                        <div class="form-group">
-                            <label for="temperature">VLM Creativity (Temperature: 0.0 - 1.5)
-                                <span class="tooltip">ⓘ<span class="tooltiptext">Controls the randomness of cold open pitches. 0.2 = deterministic and focused; 0.8 = charismatic and adaptive.</span></span>
-                            </label>
-                            <input type="number" id="temperature" name="temperature" step="0.1" min="0.0" max="2.0" value="0.8">
-                        </div>
-                    </div>
-
-                    <button type="submit" style="width: 100%; font-size: 1.05em; padding: 12px;">
-                        ▶ Run Instant Detection & Generate Pitch
-                    </button>
-                </form>
-
-                {% if simulated_response %}
-                <div style="margin-top: 20px; padding: 16px; border-radius: 8px; background: #ffffff; border: 1px solid #bfdbfe; box-shadow: 0 2px 4px rgba(37,99,235,0.06);">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                        <strong style="color: var(--primary); font-size: 0.95em;">Generated Autonomous Pitch:</strong>
-                        <span class="badge badge-sim">Simulated Output</span>
-                    </div>
-                    <div class="response-quote">"{{ simulated_response }}"</div>
-                </div>
-                {% endif %}
-            </div>
-
-            <!-- HIGH-PRIORITY COLUMN 2: LIVE INTERACTION LOG & ANALYTICS -->
-            <div class="card card-high-value">
-                <div class="card-header">
-                    <h2>📊 Live CRM Feed & Analytics <span class="badge badge-lead">Live SQLite Stream</span></h2>
-                    <span class="tooltip">ⓘ<span class="tooltiptext">Real-time log of in-store customer engagements persisted in sirens.db. Allows qualifying leads, rating responses, and logging sales staff notes.</span></span>
-                </div>
-
-                <!-- Visual Charts Sub-Grid -->
-                <div class="split-2" style="margin-bottom: 16px;">
-                    <div style="background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid var(--border);">
-                        <div style="font-size: 0.8em; font-weight: 600; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase;">
-                            Volume (Last 7 Days)
-                        </div>
-                        <canvas id="interactionChart" width="100%" height="85"></canvas>
-                    </div>
-                    <div style="background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid var(--border);">
-                        <div style="font-size: 0.8em; font-weight: 600; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase;">
-                            Framework Effectiveness
-                        </div>
-                        <canvas id="frameworkChart" width="100%" height="85"></canvas>
-                    </div>
-                </div>
-
-                <!-- Scrollable CRM Stream -->
-                <div class="scrollable-feed" id="interaction-feed-container">
-                    {% for interaction in interactions %}
-                    <div class="item-card {% if interaction.is_lead %}lead-card{% endif %}">
-                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px;">
-                            <div>
-                                <span style="font-weight: 600; color: var(--text-main); font-size: 0.9em;">Detected: {{ interaction.attributes }}</span>
-                                {% if interaction.is_lead %}
-                                <span class="badge badge-lead" style="margin-left: 6px;">Qualified Lead</span>
-                                {% endif %}
+                        <div class="dashboard-grid" style="grid-template-columns: 2fr 1fr; grid-gap: 15px; margin-bottom: 15px;">
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label for="system_prompt_override">Prompt Override <span class="tooltip">ⓘ<span class="tooltiptext">Temporarily bypasses the dynamic store prompt for A/B testing a specific idea. Leave blank for normal operation.</span></span></label>
+                                <input type="text" id="system_prompt_override" name="system_prompt_override" placeholder="Optional manual override...">
                             </div>
-                            <span style="font-size: 0.75em; color: var(--text-muted); white-space: nowrap;">
-                                {{ interaction.timestamp.strftime('%Y-%m-%d %H:%M') }}
-                            </span>
-                        </div>
-
-                        <div class="response-quote">"{{ interaction.response }}"</div>
-
-                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 0.8em; color: var(--text-muted); margin-bottom: 8px;">
-                            <span>Framework: <strong>{{ interaction.sales_framework }}</strong></span>
-                            {% if interaction.tts_latency_ms > 0 %}
-                            <span>Piper TTS Latency: <strong>{{ interaction.tts_latency_ms }}ms</strong></span>
-                            {% endif %}
-                        </div>
-
-                        <!-- CRM Actions: Lead Toggle, Feedback Rating, Note Attachment -->
-                        <div style="background: #f1f5f9; padding: 8px 12px; border-radius: 6px; display: flex; flex-direction: column; gap: 8px;">
-                            <div style="display: flex; justify-content: space-between; align-items: center;">
-                                <form method="post" action="/mark_lead/{{ interaction.id }}" style="margin: 0;">
-                                    <input type="hidden" name="is_lead" value="{{ 'False' if interaction.is_lead else 'True' }}">
-                                    <button type="submit" style="padding: 4px 10px; font-size: 0.8em; background-color: {% if interaction.is_lead %}#64748b{% else %}var(--success){% endif %};">
-                                        {% if interaction.is_lead %}✓ Remove Lead Flag{% else %}★ Flag as Qualified Lead{% endif %}
-                                    </button>
-                                </form>
-
-                                <form method="post" action="/submit_feedback/{{ interaction.id }}" style="margin: 0; display: flex; align-items: center; gap: 6px;">
-                                    <span style="font-size: 0.8em; color: var(--text-muted);">Pitch Rating:</span>
-                                    <button type="submit" name="feedback_score" value="1" style="padding: 2px 8px; font-size: 0.85em; background-color: {% if interaction.feedback_score == 1 %}var(--danger){% else %}#cbd5e1{% endif %};" title="Poor pitch">👎</button>
-                                    <button type="submit" name="feedback_score" value="5" style="padding: 2px 8px; font-size: 0.85em; background-color: {% if interaction.feedback_score == 5 %}var(--success){% else %}#cbd5e1{% endif %};" title="Effective pitch">👍</button>
-                                </form>
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label for="temperature">Creativity (Temp) <span class="tooltip">ⓘ<span class="tooltiptext">LLM Temperature (0.0 to 2.0). Lower = predictable, Higher = creative/erratic. Default: 0.8</span></span></label>
+                                <input type="number" id="temperature" name="temperature" step="0.1" min="0.0" max="2.0" value="0.8">
                             </div>
+                        </div>
+                        <button type="submit" style="width: 100%; font-size: 1.1em; padding: 12px;">Run Simulation</button>
+                    </form>
 
-                            <form method="post" action="/update_follow_up/{{ interaction.id }}" style="display: flex; gap: 6px; margin: 0;">
-                                <input type="text" name="follow_up_notes" value="{{ interaction.follow_up_notes }}" placeholder="Add staff follow-up note..." style="padding: 5px 8px; font-size: 0.85em; flex-grow: 1;">
-                                <button type="submit" class="btn-secondary" style="padding: 5px 10px; font-size: 0.8em;">Save Note</button>
-                            </form>
+                    {% if simulated_response %}
+                    <div style="margin-top: 20px; padding: 15px; border-radius: 8px; background: #ffffff; border: 1px solid #bee3f8; box-shadow: 0 2px 4px rgba(43, 108, 176, 0.1);">
+                        <strong style="color: #2b6cb0; display: block; margin-bottom: 5px;">Agent Response Generated:</strong>
+                        <p style="margin: 0; font-size: 1.05em; line-height: 1.4;">"{{ simulated_response }}"</p>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Live Interaction Feed -->
+                <div class="section" style="flex-grow: 1; display: flex; flex-direction: column;">
+                    <h2>Live Interaction Log & Analytics <span class="badge">CRM Data</span> <span class="tooltip">ⓘ<span class="tooltiptext">A real-time database feed of recent engagements and the specific responses the agent generated for them. Data is persisted in sirens.db.</span></span></h2>
+                    <div class="dashboard-grid" style="grid-template-columns: 1fr 1fr; margin-bottom: 20px;">
+                        <div>
+                            <canvas id="interactionChart" width="100%" height="60"></canvas>
+                        </div>
+                        <div>
+                            <canvas id="frameworkChart" width="100%" height="60"></canvas>
                         </div>
                     </div>
-                    {% else %}
-                    <p style="color: var(--text-muted); font-style: italic; text-align: center; padding: 24px;">No customer interactions logged yet. Run a simulation or connect hardware vision!</p>
-                    {% endfor %}
-                </div>
-            </div>
-
-            <!-- CONFIGURATION & KNOWLEDGE BASE ROW (CONSOLIDATED) -->
-
-            <!-- KNOWLEDGE BASE: PRODUCT INVENTORY & DYNAMIC PROMOTIONS -->
-            <div class="card">
-                <div class="card-header">
-                    <h2>📦 Product Inventory & Pitch Assets <span class="badge" style="background: #fef3c7; color: #b45309; border: 1px solid #fde68a;">Catalog</span></h2>
-                    <span class="tooltip">ⓘ<span class="tooltiptext">The store catalog available for the agent to promote. The agent selects items matching visual cues and weaves Unique Selling Points into pitches.</span></span>
-                </div>
-
-                <div class="scrollable-feed" style="max-height: 200px; margin-bottom: 16px;">
-                    {% for item in items %}
-                    <div class="item-card" style="border-left: 3px solid #f59e0b; padding: 10px 12px;">
-                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                            <div>
-                                <strong style="color: var(--text-main);">{{ item.product_name }}</strong>
-                                <span style="color: var(--success); font-weight: bold; margin-left: 8px;">${{ item.price_usd }}</span>
-                                <ul style="margin: 4px 0 0 0; padding-left: 18px; font-size: 0.82em; color: var(--text-muted);">
-                                    {% for usp in item.unique_selling_points %}
-                                    <li>{{ usp }}</li>
-                                    {% endfor %}
-                                </ul>
-                            </div>
-                            <form method="post" action="/delete_item" style="margin: 0;">
-                                <input type="hidden" name="product_name" value="{{ item.product_name }}">
-                                <button type="submit" class="btn-danger" style="padding: 3px 8px; font-size: 0.75em;" title="Delete product">✕</button>
-                            </form>
-                        </div>
-                    </div>
-                    {% else %}
-                    <p style="color: var(--text-muted); font-style: italic;">No items currently in inventory.</p>
-                    {% endfor %}
-                </div>
-
-                <!-- Add Product Form -->
-                <form method="post" action="/add_item" style="background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 16px;">
-                    <div style="font-weight: 600; font-size: 0.85em; margin-bottom: 8px; color: var(--text-main);">+ Add New Inventory Item</div>
-                    <div class="split-2" style="margin-bottom: 8px;">
-                        <input type="text" name="product_name" placeholder="Product Name (e.g. AeroFoam Headphones)" required>
-                        <input type="number" step="0.01" name="price_usd" placeholder="Price (USD)" required>
-                    </div>
-                    <div style="display: flex; gap: 8px;">
-                        <input type="text" name="usps" placeholder="Unique Selling Points (comma separated e.g. 40hr battery, ANC)" required style="flex-grow: 1;">
-                        <button type="submit" style="background-color: #f59e0b; white-space: nowrap;">Add Item</button>
-                    </div>
-                </form>
-
-                <!-- DYNAMIC PROMOTIONS SUB-SECTION -->
-                <div style="border-top: 1px solid var(--border); padding-top: 14px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                        <strong style="font-size: 0.9em; color: var(--text-main);">🏷️ Dynamic Discount Rules
-                            <span class="tooltip">ⓘ<span class="tooltiptext">Automated discount triggers based on customer dwell time, matching visual attributes, or volume engagement.</span></span>
-                        </strong>
-                        <span class="badge" style="background: #ede9fe; color: #6d28d9; border: 1px solid #ddd6fe;">Automated Pricing</span>
-                    </div>
-
-                    <div class="scrollable-feed" style="max-height: 140px; margin-bottom: 12px;">
-                        {% for promo in promotions %}
-                        <div class="item-card" style="border-left: 3px solid #8b5cf6; padding: 8px 10px; margin-bottom: 8px; font-size: 0.85em;">
-                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div class="interaction-log-container" style="flex-grow: 1;">
+                        {% for interaction in interactions %}
+                        <div class="item-card" style="padding: 12px; {% if interaction.is_lead %}border-left: 4px solid #27ae60;{% endif %}">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
                                 <div>
-                                    <strong>{{ promo.rule_name }}</strong>
-                                    <span style="color: var(--success); font-weight: bold; margin-left: 6px;">{{ promo.discount_percent }}% OFF</span>
-                                    <span style="color: var(--text-muted); font-size: 0.8em; margin-left: 6px;">({{ promo.trigger_type }} &ge; {{ promo.threshold }})</span>
-                                    {% if promo.description %}
-                                    <div style="color: var(--text-muted); font-size: 0.8em; margin-top: 2px;">{{ promo.description }}</div>
+                                    <strong style="color: #4a5568;">Profile: {{ interaction.attributes }}</strong>
+                                    {% if interaction.is_lead %}
+                                    <span style="background-color: #e8f5e9; color: #2e7d32; padding: 2px 6px; border-radius: 4px; font-size: 0.75em; margin-left: 8px; border: 1px solid #c8e6c9;">Qualified Lead</span>
                                     {% endif %}
                                 </div>
-                                <form method="post" action="/delete_promotion/{{ loop.index0 }}" style="margin: 0;">
-                                    <button type="submit" class="btn-danger" style="padding: 2px 6px; font-size: 0.7em;" title="Delete promotion rule">✕</button>
+                                <span style="font-size: 0.75em; color: #a0aec0; white-space: nowrap; margin-left: 10px;">{{ interaction.timestamp.strftime('%y-%m-%d %H:%M') }}</span>
+                            </div>
+                            <div class="response-box" style="margin-bottom: 10px;">
+                                "{{ interaction.response }}"
+                            </div>
+                            {% if interaction.tts_latency_ms > 0 %}
+                            <div style="font-size: 0.75em; color: #718096; margin-bottom: 8px; text-align: right;">
+                                TTS Latency: {{ interaction.tts_latency_ms }}ms
+                            </div>
+                            {% endif %}
+
+                            <div style="background: #edf2f7; padding: 10px; border-radius: 6px; font-size: 0.85em;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                                    <form method="post" action="/mark_lead/{{ interaction.id }}" style="margin: 0;">
+                                        <input type="hidden" name="is_lead" value="{{ 'False' if interaction.is_lead else 'True' }}">
+                                        <button type="submit" style="padding: 4px 8px; font-size: 0.9em; background-color: {% if interaction.is_lead %}#7f8c8d{% else %}#27ae60{% endif %};">
+                                            {% if interaction.is_lead %}Remove Lead Status{% else %}Mark as Lead{% endif %}
+                                        </button>
+                                    </form>
+
+                                    <form method="post" action="/submit_feedback/{{ interaction.id }}" style="margin: 0; display: flex; align-items: center; gap: 5px;">
+                                        <span style="color: #718096;">Rating:</span>
+                                        <button type="submit" name="feedback_score" value="1" style="padding: 2px 8px; font-size: 0.9em; background-color: {% if interaction.feedback_score == 1 %}#e74c3c{% else %}#cbd5e0{% endif %};">👎</button>
+                                        <button type="submit" name="feedback_score" value="5" style="padding: 2px 8px; font-size: 0.9em; background-color: {% if interaction.feedback_score == 5 %}#2ecc71{% else %}#cbd5e0{% endif %};">👍</button>
+                                    </form>
+                                </div>
+
+                                <form method="post" action="/update_follow_up/{{ interaction.id }}" style="display: flex; gap: 8px; margin-top: 8px;">
+                                    <input type="text" name="follow_up_notes" value="{{ interaction.follow_up_notes }}" placeholder="Add follow up notes..." style="padding: 4px 8px; font-size: 0.9em; flex-grow: 1;">
+                                    <button type="submit" style="padding: 4px 8px; font-size: 0.9em; background-color: #34495e;">Save Note</button>
                                 </form>
                             </div>
                         </div>
                         {% else %}
-                        <p style="color: var(--text-muted); font-style: italic; font-size: 0.85em;">No active promotion rules.</p>
+                        <div style="text-align: center; padding: 40px 20px; color: #a0aec0; background: #f8fafc; border-radius: 8px; border: 1px dashed #cbd5e0;">
+                            <p style="margin: 0;">No interactions logged yet. Run a simulation above to test.</p>
+                        </div>
                         {% endfor %}
                     </div>
+                </div>
+            </div>
 
-                    <!-- Add Promotion Form -->
-                    <form method="post" action="/add_promotion" style="background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid var(--border);">
-                        <div style="font-weight: 600; font-size: 0.85em; margin-bottom: 8px; color: var(--text-main);">+ Add Automated Discount Rule</div>
-                        <div class="split-3" style="margin-bottom: 8px;">
-                            <div>
-                                <label style="font-size: 0.75em; margin-bottom: 2px;">Rule Name</label>
-                                <input type="text" name="rule_name" placeholder="e.g. High Dwell Discount" required style="padding: 6px 8px; font-size: 0.8em;">
+            <!-- RIGHT COLUMN: Configuration & Knowledge Base -->
+            <div class="column">
+
+                <!-- Core Settings & Hardware -->
+                <div class="section">
+                    <h2>Core Configuration <span class="tooltip">ⓘ<span class="tooltiptext">Essential settings controlling the agent's identity, primary sales approach, and hardware/API connections.</span></span></h2>
+
+                    <form method="post" action="/update_settings" style="margin-bottom: 25px; padding-bottom: 20px; border-bottom: 1px solid #e1e4e8;">
+                        <div class="dashboard-grid" style="grid-gap: 15px;">
+                            <div class="form-group">
+                                <label for="store_name">Store Name</label>
+                                <input type="text" id="store_name" name="store_name" value="{{ store_name }}" placeholder="e.g. Apex Tech Boutique" required>
                             </div>
-                            <div>
-                                <label style="font-size: 0.75em; margin-bottom: 2px;">Discount %</label>
-                                <input type="number" name="discount_percent" min="1" max="100" placeholder="e.g. 15" required style="padding: 6px 8px; font-size: 0.8em;">
+                            <div class="form-group">
+                                <label for="sales_framework">Primary Sales Framework <span class="tooltip">ⓘ<span class="tooltiptext">The overarching psychological strategy (e.g., Pattern Interrupt, Consultative, Challenger Sale).</span></span></label>
+                                <input type="text" id="sales_framework" name="sales_framework" value="{{ sales_framework }}" placeholder="e.g. Pattern Interrupt" required>
                             </div>
-                            <div>
-                                <label style="font-size: 0.75em; margin-bottom: 2px;">Trigger</label>
-                                <select name="trigger_type" style="padding: 6px 8px; font-size: 0.8em;">
-                                    <option value="dwell_time">Dwell Time (seconds)</option>
-                                    <option value="attribute_match">Attribute Match Count</option>
-                                    <option value="repeat_visit">Repeat Visit Count</option>
+                        </div>
+                        <button type="submit">Update Store Settings</button>
+                    </form>
+
+                    <form method="post" action="/update_system_config">
+                        <h3>Hardware & API Toggles</h3>
+                        <div class="dashboard-grid" style="grid-template-columns: 2fr 1fr; grid-gap: 15px;">
+                            <div class="form-group">
+                                <label for="openai_api_key">OpenAI API Key <span class="tooltip">ⓘ<span class="tooltiptext">Required for live VLM streaming. If blank, the system falls back to mock canned responses.</span></span></label>
+                                <input type="text" id="openai_api_key" name="openai_api_key" value="{{ openai_api_key }}" placeholder="sk-...">
+                            </div>
+                            <div class="form-group">
+                                <label for="use_mock_vision">Vision Feed <span class="tooltip">ⓘ<span class="tooltiptext">False: Connect to local webcam/Pi Camera (/dev/video0). True: Run mock background loop.</span></span></label>
+                                <select id="use_mock_vision" name="use_mock_vision">
+                                    <option value="True" {% if use_mock_vision == 'True' %}selected{% endif %}>Mock (Test)</option>
+                                    <option value="False" {% if use_mock_vision == 'False' %}selected{% endif %}>Live (Camera)</option>
                                 </select>
                             </div>
                         </div>
-                        <div style="display: flex; gap: 8px; align-items: flex-end;">
-                            <div style="width: 120px;">
-                                <label style="font-size: 0.75em; margin-bottom: 2px;">Threshold</label>
-                                <input type="number" name="threshold" min="1" value="30" required style="padding: 6px 8px; font-size: 0.8em;">
-                            </div>
-                            <div style="flex-grow: 1;">
-                                <label style="font-size: 0.75em; margin-bottom: 2px;">Description / Pitch Script Hook</label>
-                                <input type="text" name="description" placeholder="Optional rationale for agent..." style="padding: 6px 8px; font-size: 0.8em;">
-                            </div>
-                            <button type="submit" id="add-promotion-btn" style="background-color: #8b5cf6; padding: 6px 14px; font-size: 0.85em; white-space: nowrap; height: 35px;">Add Rule</button>
-                        </div>
+                        <button type="submit">Update System Config</button>
                     </form>
                 </div>
-            </div>
 
-            <!-- AGENT SALES PSYCHOLOGY & SYSTEM SETTINGS -->
-            <div class="card">
-                <div class="card-header">
-                    <h2>🧠 Sales Psychology & System Config</h2>
-                    <span class="tooltip">ⓘ<span class="tooltiptext">Fine-tune the retail behavioral framework, mandatory conversion tactics, privacy constraints, and underlying edge hardware settings.</span></span>
-                </div>
-
-                <!-- Store & Framework Form -->
-                <form method="post" action="/update_settings" style="margin-bottom: 16px;">
-                    <div class="split-2">
-                        <div class="form-group" style="margin-bottom: 8px;">
-                            <label for="store_name">Store Name
-                                <span class="tooltip">ⓘ<span class="tooltiptext">Business identifier woven into greeting context.</span></span>
-                            </label>
-                            <input type="text" id="store_name" name="store_name" value="{{ store_name }}" required>
-                        </div>
-                        <div class="form-group" style="margin-bottom: 8px;">
-                            <label for="sales_framework">Primary Sales Framework
-                                <span class="tooltip">ⓘ<span class="tooltiptext">The overarching psychological approach (e.g. Pattern Interrupt Cold-Open, Challenger Sale, Consultative).</span></span>
-                            </label>
-                            <input type="text" id="sales_framework" name="sales_framework" value="{{ sales_framework }}" required>
-                        </div>
-                    </div>
-                    <button type="submit" class="btn-secondary" style="width: 100%; padding: 6px; font-size: 0.85em;">Save Store Identity & Framework</button>
-                </form>
-
-                <!-- Tactics & Constraints Consolidated Grid -->
-                <div class="split-2" style="margin-bottom: 16px;">
-                    <!-- Tactics -->
-                    <div>
-                        <div style="font-size: 0.85em; font-weight: 600; color: var(--success); margin-bottom: 6px;">
-                            Tactics Enforced
-                            <span class="tooltip">ⓘ<span class="tooltiptext">Techniques the agent must actively weave into each speaking turn.</span></span>
-                        </div>
-                        <div style="max-height: 120px; overflow-y: auto; margin-bottom: 8px; border: 1px solid var(--border); border-radius: 6px; padding: 4px;">
-                            {% for tactic in tactics_enforced %}
-                            <div style="display: flex; justify-content: space-between; align-items: center; padding: 4px 6px; font-size: 0.8em; border-bottom: 1px solid #f1f5f9;">
-                                <span>{{ tactic }}</span>
-                                <form method="post" action="/delete_tactic" style="margin: 0;">
-                                    <input type="hidden" name="tactic" value="{{ tactic }}">
-                                    <button type="submit" class="btn-danger" style="padding: 1px 4px; font-size: 0.7em;">✕</button>
-                                </form>
-                            </div>
-                            {% endfor %}
-                        </div>
-                        <form method="post" action="/add_tactic" style="display: flex; gap: 4px;">
-                            <input type="text" name="tactic" placeholder="Add tactic..." required style="padding: 4px 6px; font-size: 0.8em;">
-                            <button type="submit" class="btn-success" style="padding: 4px 8px; font-size: 0.8em;">+</button>
-                        </form>
+                <!-- Psychology Rules -->
+                <div class="section">
+                    <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                        <h2>Psychology Modifiers <span class="tooltip">ⓘ<span class="tooltiptext">Granular behavioral rules injected directly into the LLM system prompt.</span></span></h2>
                     </div>
 
-                    <!-- Constraints -->
-                    <div>
-                        <div style="font-size: 0.85em; font-weight: 600; color: var(--danger); margin-bottom: 6px;">
-                            Privacy & Behavioral Constraints
-                            <span class="tooltip">ⓘ<span class="tooltiptext">Hard boundary rules preventing creepiness, brand callouts, or speech run-ons.</span></span>
-                        </div>
-                        <div style="max-height: 120px; overflow-y: auto; margin-bottom: 8px; border: 1px solid var(--border); border-radius: 6px; padding: 4px;">
-                            {% for constraint in constraints %}
-                            <div style="display: flex; justify-content: space-between; align-items: center; padding: 4px 6px; font-size: 0.8em; border-bottom: 1px solid #f1f5f9;">
-                                <span>{{ constraint }}</span>
-                                <form method="post" action="/delete_constraint" style="margin: 0;">
-                                    <input type="hidden" name="constraint" value="{{ constraint }}">
-                                    <button type="submit" class="btn-danger" style="padding: 1px 4px; font-size: 0.7em;">✕</button>
-                                </form>
+                    <div class="dashboard-grid">
+                        <!-- Tactics -->
+                        <div>
+                            <h3 style="margin-top: 0; color: #27ae60;">Tactics Enforced <span class="tooltip">ⓘ<span class="tooltiptext">Specific techniques the agent MUST try to use.</span></span></h3>
+                            <div style="max-height: 200px; overflow-y: auto; margin-bottom: 10px;">
+                                {% for tactic in tactics_enforced %}
+                                <div class="list-item" style="border-left: 3px solid #27ae60;">
+                                    <span style="font-size: 0.9em;">{{ tactic }}</span>
+                                    <form method="post" action="/delete_tactic" style="margin: 0;">
+                                        <input type="hidden" name="tactic" value="{{ tactic }}">
+                                        <button type="submit" class="btn-danger" style="padding: 2px 6px; font-size: 0.75em; border-radius: 3px;" title="Delete">X</button>
+                                    </form>
+                                </div>
+                                {% endfor %}
                             </div>
-                            {% endfor %}
+                            <form method="post" action="/add_tactic" class="inline-form">
+                                <div class="form-group"><input type="text" name="tactic" placeholder="Add tactic..." required style="padding: 6px;"></div>
+                                <button type="submit" style="padding: 6px 10px; background-color: #27ae60;">Add</button>
+                            </form>
                         </div>
-                        <form method="post" action="/add_constraint" style="display: flex; gap: 4px;">
-                            <input type="text" name="constraint" placeholder="Add boundary..." required style="padding: 4px 6px; font-size: 0.8em;">
-                            <button type="submit" class="btn-danger" style="padding: 4px 8px; font-size: 0.8em;">+</button>
-                        </form>
+
+                        <!-- Constraints -->
+                        <div>
+                            <h3 style="margin-top: 0; color: #e74c3c;">Constraints <span class="tooltip">ⓘ<span class="tooltiptext">Strict boundaries or words the agent MUST NEVER use.</span></span></h3>
+                            <div style="max-height: 200px; overflow-y: auto; margin-bottom: 10px;">
+                                {% for constraint in constraints %}
+                                <div class="list-item" style="border-left: 3px solid #e74c3c;">
+                                    <span style="font-size: 0.9em;">{{ constraint }}</span>
+                                    <form method="post" action="/delete_constraint" style="margin: 0;">
+                                        <input type="hidden" name="constraint" value="{{ constraint }}">
+                                        <button type="submit" class="btn-danger" style="padding: 2px 6px; font-size: 0.75em; border-radius: 3px;" title="Delete">X</button>
+                                    </form>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            <form method="post" action="/add_constraint" class="inline-form">
+                                <div class="form-group"><input type="text" name="constraint" placeholder="Add constraint..." required style="padding: 6px;"></div>
+                                <button type="submit" style="padding: 6px 10px; background-color: #e74c3c;">Add</button>
+                            </form>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Hardware & System Credentials -->
-                <form method="post" action="/update_system_config" style="background: #f8fafc; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border);">
-                    <div style="font-weight: 600; font-size: 0.85em; margin-bottom: 8px; color: var(--text-main);">Hardware & API Connection</div>
-                    <div class="split-3">
-                        <div class="form-group" style="margin-bottom: 0;">
-                            <label for="openai_api_key" style="font-size: 0.8em;">OpenAI API Key
-                                <span class="tooltip">ⓘ<span class="tooltiptext">API token for real-time streaming VLM inference.</span></span>
-                            </label>
-                            <input type="text" id="openai_api_key" name="openai_api_key" value="{{ openai_api_key }}" placeholder="sk-..." style="padding: 5px 8px; font-size: 0.8em;">
+                <!-- Product Inventory -->
+                <div class="section">
+                    <h2>Knowledge Base: Inventory <span class="tooltip">ⓘ<span class="tooltiptext">The catalog of products the agent is aware of and can actively pitch to customers.</span></span></h2>
+
+                    <div style="max-height: 300px; overflow-y: auto; margin-bottom: 20px; padding-right: 5px;">
+                        {% for item in items %}
+                        <div class="item-card" style="padding: 12px; border-left: 4px solid #f39c12;">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                                <div>
+                                    <strong style="color: #2c3e50; font-size: 1.1em;">{{ item.product_name }}</strong> <span style="color: #27ae60; font-weight: bold;">${{ item.price_usd }}</span>
+                                    <ul style="margin: 8px 0 0 0; padding-left: 20px; font-size: 0.9em; color: #455a64;">
+                                        {% for usp in item.unique_selling_points %}
+                                        <li>{{ usp }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                                <form method="post" action="/delete_item" style="margin: 0;">
+                                    <input type="hidden" name="product_name" value="{{ item.product_name }}">
+                                    <button type="submit" class="btn-danger" style="padding: 4px 8px; font-size: 0.8em;" title="Delete Item">Delete</button>
+                                </form>
+                            </div>
                         </div>
-                        <div class="form-group" style="margin-bottom: 0;">
-                            <label for="camera_index" style="font-size: 0.8em;">Camera Index
-                                <span class="tooltip">ⓘ<span class="tooltiptext">Hardware device ID (e.g. 0 for /dev/video0).</span></span>
-                            </label>
-                            <input type="number" id="camera_index" name="camera_index" value="{{ camera_index }}" style="padding: 5px 8px; font-size: 0.8em;">
-                        </div>
-                        <div class="form-group" style="margin-bottom: 0;">
-                            <label for="use_mock_vision" style="font-size: 0.8em;">Vision Engine
-                                <span class="tooltip">ⓘ<span class="tooltiptext">Toggle between synthetic testing and physical optical tracking.</span></span>
-                            </label>
-                            <select id="use_mock_vision" name="use_mock_vision" style="padding: 5px 8px; font-size: 0.8em;">
-                                <option value="True" {% if use_mock_vision == 'True' %}selected{% endif %}>Mock Mode (Test)</option>
-                                <option value="False" {% if use_mock_vision == 'False' %}selected{% endif %}>Live Physical Device</option>
-                            </select>
-                        </div>
+                        {% else %}
+                        <p style="color: #7f8c8d; font-style: italic;">No inventory items added yet.</p>
+                        {% endfor %}
                     </div>
-                    <button type="submit" style="width: 100%; margin-top: 8px; padding: 6px; font-size: 0.85em;">Update Hardware & Credentials</button>
-                </form>
+
+                    <div style="background-color: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e1e4e8;">
+                        <h3 style="margin-top: 0;">Add New Product</h3>
+                        <form method="post" action="/add_item">
+                            <div class="dashboard-grid" style="grid-template-columns: 3fr 1fr; grid-gap: 10px; margin-bottom: 10px;">
+                                <div class="form-group" style="margin-bottom: 0;">
+                                    <input type="text" id="product_name" name="product_name" placeholder="Product Name" required>
+                                </div>
+                                <div class="form-group" style="margin-bottom: 0;">
+                                    <input type="number" step="0.01" id="price_usd" name="price_usd" placeholder="Price $" required>
+                                </div>
+                            </div>
+                            <div class="form-group" style="margin-bottom: 10px;">
+                                <input type="text" id="usps" name="usps" placeholder="Unique Selling Points (comma separated e.g., Waterproof, 40hr battery)" required>
+                            </div>
+                            <button type="submit" style="background-color: #f39c12; color: #fff;">+ Add Item to Database</button>
+                        </form>
+                    </div>
+                </div>
 
             </div>
-
-        </main>
+        </div>
     </div>
-
-    <!-- Chart.js Visualization Scripts -->
     <script>
         const ctx = document.getElementById('interactionChart').getContext('2d');
         const chartLabels = {{ chart_labels | safe }};
         const chartData = {{ chart_data | safe }};
 
-        new Chart(ctx, {
+        const interactionChart = new Chart(ctx, {
             type: 'line',
             data: {
                 labels: chartLabels,
                 datasets: [{
-                    label: 'Interactions',
+                    label: 'Interactions per Day',
                     data: chartData,
-                    borderColor: '#2563eb',
-                    backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                    borderColor: '#3498db',
+                    backgroundColor: 'rgba(52, 152, 219, 0.2)',
                     borderWidth: 2,
                     tension: 0.3,
                     fill: true
@@ -778,11 +326,13 @@
             },
             options: {
                 responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
                 scales: {
-                    y: { beginAtZero: true, ticks: { stepSize: 1, precision: 0 } },
-                    x: { ticks: { font: { size: 9 } } }
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        }
+                    }
                 }
             }
         });
@@ -792,119 +342,37 @@
         const frameworkTotals = {{ framework_totals | safe }};
         const frameworkLeads = {{ framework_leads | safe }};
 
-        new Chart(ctx2, {
+        const frameworkChart = new Chart(ctx2, {
             type: 'bar',
             data: {
                 labels: frameworkLabels,
                 datasets: [
                     {
-                        label: 'Total',
+                        label: 'Total Pits',
                         data: frameworkTotals,
-                        backgroundColor: 'rgba(148, 163, 184, 0.6)',
-                        borderWidth: 0,
-                        borderRadius: 3
+                        backgroundColor: 'rgba(149, 165, 166, 0.6)',
+                        borderWidth: 1
                     },
                     {
-                        label: 'Leads',
+                        label: 'Qualified Leads',
                         data: frameworkLeads,
-                        backgroundColor: '#16a34a',
-                        borderWidth: 0,
-                        borderRadius: 3
+                        backgroundColor: 'rgba(39, 174, 96, 0.8)',
+                        borderWidth: 1
                     }
                 ]
             },
             options: {
                 responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 9 } } } },
                 scales: {
-                    y: { beginAtZero: true, ticks: { stepSize: 1, precision: 0 } },
-                    x: { ticks: { font: { size: 9 } } }
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        }
+                    }
                 }
             }
         });
-
-        // Real-Time WebSocket Client
-        function initWebSocket() {
-            const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsUrl = `${wsProtocol}//${window.location.host}/ws/events`;
-            const wsDot = document.getElementById('ws-dot');
-            const wsText = document.getElementById('ws-status-text');
-
-            const socket = new WebSocket(wsUrl);
-
-            socket.onopen = () => {
-                wsDot.style.background = 'var(--success)';
-                wsText.innerText = 'WS Stream: Live';
-            };
-
-            socket.onclose = () => {
-                wsDot.style.background = 'var(--danger)';
-                wsText.innerText = 'WS Stream: Disconnected';
-                // Attempt reconnection after 3 seconds
-                setTimeout(initWebSocket, 3000);
-            };
-
-            socket.onerror = () => {
-                wsDot.style.background = 'var(--danger)';
-                wsText.innerText = 'WS Stream: Error';
-            };
-
-            socket.onmessage = (event) => {
-                try {
-                    const msg = JSON.parse(event.data);
-                    if (msg.event === 'NEW_INTERACTION' && msg.data) {
-                        const item = msg.data;
-                        const container = document.getElementById('interaction-feed-container');
-                        if (!container) return;
-
-                        const newCard = document.createElement('div');
-                        newCard.className = `item-card ${item.is_lead ? 'lead-card' : ''}`;
-                        newCard.style.animation = 'fadeIn 0.5s ease-in-out';
-                        newCard.innerHTML = `
-                            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px;">
-                                <div>
-                                    <span style="font-weight: 600; color: var(--text-main); font-size: 0.9em;">Detected: ${item.attributes}</span>
-                                    ${item.is_lead ? '<span class="badge badge-lead" style="margin-left: 6px;">Qualified Lead</span>' : ''}
-                                </div>
-                                <span style="font-size: 0.75em; color: var(--text-muted); white-space: nowrap;">
-                                    ${item.timestamp}
-                                </span>
-                            </div>
-                            <div class="response-quote">"${item.response}"</div>
-                            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 0.8em; color: var(--text-muted); margin-bottom: 8px;">
-                                <span>Framework: <strong>${item.sales_framework}</strong></span>
-                                ${item.tts_latency_ms > 0 ? `<span>Piper TTS Latency: <strong>${item.tts_latency_ms}ms</strong></span>` : ''}
-                            </div>
-                            <div style="background: #f1f5f9; padding: 8px 12px; border-radius: 6px; display: flex; flex-direction: column; gap: 8px;">
-                                <div style="display: flex; justify-content: space-between; align-items: center;">
-                                    <form method="post" action="/mark_lead/${item.id}" style="margin: 0;">
-                                        <input type="hidden" name="is_lead" value="${item.is_lead ? 'False' : 'True'}">
-                                        <button type="submit" style="padding: 4px 10px; font-size: 0.8em; background-color: ${item.is_lead ? '#64748b' : 'var(--success)'};">
-                                            ${item.is_lead ? '✓ Remove Lead Flag' : '★ Flag as Qualified Lead'}
-                                        </button>
-                                    </form>
-                                    <form method="post" action="/submit_feedback/${item.id}" style="margin: 0; display: flex; align-items: center; gap: 6px;">
-                                        <span style="font-size: 0.8em; color: var(--text-muted);">Pitch Rating:</span>
-                                        <button type="submit" name="feedback_score" value="1" style="padding: 2px 8px; font-size: 0.85em; background-color: ${item.feedback_score === 1 ? 'var(--danger)' : '#cbd5e1'};">👎</button>
-                                        <button type="submit" name="feedback_score" value="5" style="padding: 2px 8px; font-size: 0.85em; background-color: ${item.feedback_score === 5 ? 'var(--success)' : '#cbd5e1'};">👍</button>
-                                    </form>
-                                </div>
-                                <form method="post" action="/update_follow_up/${item.id}" style="display: flex; gap: 6px; margin: 0;">
-                                    <input type="text" name="follow_up_notes" value="${item.follow_up_notes || ''}" placeholder="Add staff follow-up note..." style="padding: 5px 8px; font-size: 0.85em; flex-grow: 1;">
-                                    <button type="submit" class="btn-secondary" style="padding: 5px 10px; font-size: 0.8em;">Save Note</button>
-                                </form>
-                            </div>
-                        `;
-                        container.prepend(newCard);
-                    }
-                } catch (e) {
-                    console.error("Error processing websocket message:", e);
-                }
-            };
-        }
-
-        window.addEventListener('DOMContentLoaded', initWebSocket);
     </script>
 </body>
 </html>

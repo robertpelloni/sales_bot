@@ -38,7 +38,7 @@ Base = declarative_base()
 class Interaction(Base):
     __tablename__ = "interactions"
     id = Column(Integer, primary_key=True, index=True)
-    timestamp = Column(DateTime, default=lambda: datetime.datetime.now(datetime.UTC))
+    timestamp = Column(DateTime, default=datetime.datetime.utcnow)
     attributes = Column(String)
     response = Column(String)
     sales_framework = Column(String, default="Unknown")

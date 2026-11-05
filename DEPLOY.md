@@ -1,27 +1,5 @@
 # DEPLOY
 
-## Unified Server Management Scripts
-Project Sirens provides scripts in `scripts/` to manage the services directly on the host or Raspberry Pi OS:
-
-```bash
-# Check status of Hub and Kiosk services
-./scripts/manage_servers.sh status
-
-# Start or stop the Hub dashboard (FastAPI/Uvicorn on port 8000)
-./scripts/manage_servers.sh start-hub
-./scripts/manage_servers.sh stop-hub
-
-# Start or stop the Kiosk vision pipeline
-./scripts/manage_servers.sh start-kiosk
-./scripts/manage_servers.sh stop-kiosk
-
-# Start both services
-./scripts/manage_servers.sh start
-
-# Launch the desktop taskbar system tray controller
-./scripts/run_tray.sh
-```
-
 ## Docker Compose Orchestration
 
 Project Sirens relies on a multi-container architecture. Use the following baseline to deploy the stack:
