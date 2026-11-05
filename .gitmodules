@@ -1,0 +1,6 @@
+[submodule "vendor/piper"]
+	path = vendor/piper
+	url = https://github.com/rhasspy/piper.git
+[submodule "vendor/yolov11-edge"]
+	path = vendor/yolov11-edge
+	url = https://github.com/ultralytics/ultralytics.git

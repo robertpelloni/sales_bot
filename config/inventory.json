@@ -1,0 +1,37 @@
+{
+  "store_name": "Integration Test Store",
+  "items": [
+    {
+      "product_name": "Awesome New Jacket",
+      "price_usd": 120.0,
+      "unique_selling_points": [
+        "Waterproof",
+        "Warm"
+      ]
+    },
+    {
+      "product_name": "Waterproof Shell",
+      "price_usd": 89.99,
+      "unique_selling_points": [
+        "Breathable",
+        "Lightweight"
+      ]
+    }
+  ],
+  "promotions": [
+    {
+      "rule_name": "Dwell Time Engagement Discount",
+      "discount_percent": 15,
+      "trigger_type": "dwell_time",
+      "threshold": 30,
+      "description": "Applies 15% discount if customer dwell time exceeds 30 seconds."
+    },
+    {
+      "rule_name": "Rainy Day Weather Incentive",
+      "discount_percent": 10,
+      "trigger_type": "attribute_match",
+      "threshold": 1,
+      "description": "Applies 10% discount when umbrella or raincoat is detected."
+    }
+  ]
+}
