@@ -34,10 +34,11 @@
   - Push new customer interaction events directly to the dashboard DOM without polling.
   - Visual Playwright E2E verification of live feed card insertion.
 
-- Phase 8: Edge Hardware Acceleration & Hailo / TPU Integrations (Completed 0.8.0)
-  - Added Coral Edge TPU TFLite runtime model loader with PyTorch and Mock fallback.
-  - Integrated dynamic discount and promotion engine wired to interactive UI controls and real-time prompt context.
+- Phase 8: Vision Feature Extraction & Multimodal Frontier VLM Integration (Completed 0.8.0)
+  - Calibrated bounding box proximity estimation and 1.5s dwell time locking.
+  - Extracted dominant apparel color heuristics and packaged metadata with base64 JPEG crops.
+  - Integrated multimodal OpenAI/Gemini chat completions with sentence-level stream chunking for Piper TTS.
 
-- Phase 9: Distributed Multi-Kiosk Mesh Orchestration (Planned 0.9.0)
-  - Native multi-kiosk discovery over mDNS/ZeroConf.
-  - Edge model hot-swapping and Hailo-8 NPU runtime integration.
+- Phase 9: Edge Hardware Acceleration & Hailo / TPU Integrations (Planned 0.9.0)
+  - Integrate native Raspberry Pi AI Camera IMX500 hardware neural network models.
+  - Support Coral Edge TPU TFLite runtime models for zero-CPU vision inference.

@@ -117,7 +117,6 @@ async def log_interaction(interaction: InteractionCreate, db: AsyncSession = Dep
 async def read_root(request: Request, simulated_response: str = "", error_message: str = "", db: AsyncSession = Depends(get_db), username: str = Depends(get_current_username)):
     store_name = ""
     items = []
-    promotions = []
     sales_framework = ""
     tactics_enforced = []
     constraints = []
@@ -129,7 +128,6 @@ async def read_root(request: Request, simulated_response: str = "", error_messag
                 inv = json.load(f)
                 store_name = inv.get("store_name", "")
                 items = inv.get("items", [])
-                promotions = inv.get("promotions", [])
 
         pm_path = get_config_path("prompt_modifiers.json")
         if pm_path:
@@ -186,7 +184,6 @@ async def read_root(request: Request, simulated_response: str = "", error_messag
         "framework_leads": json.dumps(framework_leads),
         "store_name": store_name,
         "items": items,
-        "promotions": promotions,
         "sales_framework": sales_framework,
         "tactics_enforced": tactics_enforced,
         "constraints": constraints,
@@ -268,7 +265,7 @@ async def delete_item(request: Request, product_name: str = Form(...), db: Async
 async def add_item(request: Request, product_name: str = Form(...), price_usd: float = Form(...), usps: str = Form(...), db: AsyncSession = Depends(get_db), username: str = Depends(get_current_username)):
     try:
         inv_path = get_config_path("inventory.json")
-        inv = {"store_name": "", "items": [], "promotions": []}
+        inv = {"store_name": "", "items": []}
         if os.path.exists(inv_path):
             with open(inv_path, "r") as f:
                 inv = json.load(f)
@@ -278,74 +275,13 @@ async def add_item(request: Request, product_name: str = Form(...), price_usd: f
             "price_usd": price_usd,
             "unique_selling_points": [usp.strip() for usp in usps.split(",") if usp.strip()]
         }
-        inv.setdefault("items", []).append(new_item)
+        inv["items"].append(new_item)
 
         with open(inv_path, "w") as f:
             json.dump(inv, f, indent=2)
     except Exception as e:
         print(f"Error adding item: {e}")
         return await read_root(request, error_message=f"Error adding item: {e}", db=db)
-
-    return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
-
-@app.post("/add_promotion")
-async def add_promotion(
-    request: Request,
-    rule_name: str = Form(...),
-    discount_percent: int = Form(...),
-    trigger_type: str = Form(...),
-    threshold: int = Form(1),
-    description: str = Form(""),
-    db: AsyncSession = Depends(get_db),
-    username: str = Depends(get_current_username)
-):
-    try:
-        inv_path = get_config_path("inventory.json")
-        inv = {"store_name": "", "items": [], "promotions": []}
-        if os.path.exists(inv_path):
-            with open(inv_path, "r") as f:
-                inv = json.load(f)
-
-        new_promo = {
-            "rule_name": rule_name.strip(),
-            "discount_percent": int(discount_percent),
-            "trigger_type": trigger_type.strip(),
-            "threshold": int(threshold),
-            "description": description.strip()
-        }
-        inv.setdefault("promotions", []).append(new_promo)
-
-        with open(inv_path, "w") as f:
-            json.dump(inv, f, indent=2)
-    except Exception as e:
-        print(f"Error adding promotion: {e}")
-        return await read_root(request, error_message=f"Error adding promotion: {e}", db=db)
-
-    return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
-
-@app.post("/delete_promotion/{promo_index}")
-async def delete_promotion(
-    request: Request,
-    promo_index: int,
-    db: AsyncSession = Depends(get_db),
-    username: str = Depends(get_current_username)
-):
-    try:
-        inv_path = get_config_path("inventory.json")
-        if os.path.exists(inv_path):
-            with open(inv_path, "r") as f:
-                inv = json.load(f)
-
-            promotions = inv.get("promotions", [])
-            if 0 <= promo_index < len(promotions):
-                promotions.pop(promo_index)
-                inv["promotions"] = promotions
-
-                with open(inv_path, "w") as f:
-                    json.dump(inv, f, indent=2)
-    except Exception as e:
-        print(f"Error deleting promotion: {e}")
-        return await read_root(request, error_message=f"Error deleting promotion: {e}", db=db)
 
     return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
 
@@ -541,25 +477,20 @@ async def get_server_status(username: str = Depends(get_current_username)):
         except Exception:
             pass
 
-    version_str = "0.8.0"
-    v_path = get_config_path("../VERSION.md")
-    if os.path.exists(v_path):
-        try:
-            with open(v_path, "r") as f:
-                version_str = f.read().strip()
-        except Exception:
-            pass
-    elif os.path.exists("VERSION.md"):
-        try:
-            with open("VERSION.md", "r") as f:
-                version_str = f.read().strip()
-        except Exception:
-            pass
+    version = "0.8.0"
+    for v_path in ["VERSION.md", "../VERSION.md"]:
+        if os.path.exists(v_path):
+            try:
+                with open(v_path, "r") as vf:
+                    version = vf.read().strip()
+                break
+            except Exception:
+                pass
 
     return {
         "status": "healthy",
         "service": "Project Sirens Hub",
-        "version": version_str,
+        "version": version,
         "mock_vision": str(use_mock_vision).lower() == "true",
         "camera_index": str(camera_index),
         "has_openai_key": bool(openai_key),

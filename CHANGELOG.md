@@ -1,11 +1,12 @@
 # CHANGELOG
 
-## [0.8.0] - Coral Edge TPU Hardware Acceleration & Dynamic Promotion Rules Engine
-- **Coral Edge TPU Hardware Acceleration (`src/vision.py`)**: Added `load_vision_model` helper preferentially loading Edge TPU compiled TFLite models (`yolo11n_edgetpu.tflite` via `edgetpu` lib) to prevent thermal throttling on edge devices (Raspberry Pi 5 / Coral Accelerator), falling back to PyTorch `yolo11n.pt` and graceful `MockYOLO`.
-- **Dynamic Promotions & Automated Discount Engine**: Extended `config/inventory.json` schema with automated promotion rules (`rule_name`, `discount_percent`, `trigger_type`, `threshold`, `description`).
-- **Hub Promotion Endpoints & UI Controls**: Implemented `POST /add_promotion` and `POST /delete_promotion/{promo_index}` endpoints using the PRG pattern, rendering interactive rule management and dynamic badges directly inside the unified dashboard.
-- **Top-level Import Hygiene & Dependency Hardening**: Ensured all imports in vision modules reside cleanly at top of files; installed `opencv-python-headless` for headless container/CI environments.
-- **Vision & Promotion Test Suite**: Added `tests/test_vision.py` and `test_add_and_delete_promotion` in `tests/test_api.py` achieving 100% test pass rate across all 18 test cases.
+## [0.8.0] - Vision Feature Extraction & Multimodal Frontier VLM Integration
+- **Distance Calibration & Proximity Estimation (`src/vision.py`)**: Implemented `calculate_proximity` inverse distance modeling mapped against frame height ratios (close ≤1.2m, mid-range 1.2–2.5m, far >2.5m).
+- **Temporal Dwell Lock (>1.5s) (`src/vision.py`)**: Added `is_target_dwelling` tracking target persistence before triggering conversational locks.
+- **Visual Attribute & Color Heuristics (`src/vision.py`)**: Built `extract_visual_attributes` parsing torso HSV values to identify broad outerwear colors and apparel categories without violating privacy guidelines.
+- **Multimodal Frontier VLM Pipeline (`src/llm_client.py`)**: Implemented `format_multimodal_user_content` and updated `generate_sales_response` to package structured metadata alongside compressed base64 JPEG crops to OpenAI/Gemini chat completions.
+- **Low-Latency Stream Chunking (`src/llm_client.py`)**: Added `chunk_text_stream` splitting token streams on punctuation marks (. ! ?) for low-latency Piper TTS audio piping.
+- **Comprehensive Test Suite**: Added granular unit tests in `tests/test_vision.py` and `tests/test_conversation.py` with 100% test pass rate across 23 tests.
 
 ## [0.7.0] - Real-Time WebSocket Streaming & Live CRM Event Push
 - **WebSocket Streaming (`/ws/events`)**: Added FastAPI WebSocket route with `ConnectionManager` to push customer interactions directly to connected dashboard clients without polling.

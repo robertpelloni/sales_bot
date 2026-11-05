@@ -25,7 +25,7 @@ Configuration and administration endpoints are protected with HTTP Basic Authent
 {
   "status": "healthy",
   "service": "Project Sirens Hub",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "mock_vision": true,
   "camera_index": "0",
   "has_openai_key": false,
@@ -101,15 +101,3 @@ Configuration and administration endpoints are protected with HTTP Basic Authent
 ### 8. `POST /update_follow_up/{interaction_id}`
 - **Description**: Appends permanent staff follow-up notes to a CRM interaction record.
 - **Form Parameter**: `follow_up_notes`.
-
-### 9. `POST /add_promotion`
-- **Description**: Adds an automated discount rule into the store catalog configuration (`config/inventory.json`).
-- **Form Parameters**:
-  - `rule_name`: Human-readable identifier for the promotion.
-  - `discount_percent`: Percentage discount (1 - 100).
-  - `trigger_type`: Event condition trigger (`dwell_time`, `attribute_match`, `store_traffic`).
-  - `threshold`: Condition value to activate promotion.
-  - `description`: Explanatory context string.
-
-### 10. `POST /delete_promotion/{promo_index}`
-- **Description**: Deletes a promotion rule at the specified array index from `config/inventory.json`.

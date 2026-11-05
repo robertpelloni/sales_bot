@@ -125,53 +125,6 @@ def test_server_status_and_shutdown(client):
         assert response.json()["status"] == "shutting_down"
 
 
-def test_add_and_delete_promotion(client, monkeypatch, tmp_path):
-    """Verifies adding and deleting dynamic promotions through the Hub API."""
-    import json
-    dummy_inv = {
-        "store_name": "Test Promo Store",
-        "items": [],
-        "promotions": [
-            {
-                "rule_name": "Initial Rule",
-                "discount_percent": 10,
-                "trigger_type": "dwell_time",
-                "threshold": 15,
-                "description": "Initial test rule"
-            }
-        ]
-    }
-    inv_file = tmp_path / "inventory.json"
-    inv_file.write_text(json.dumps(dummy_inv))
-
-    monkeypatch.setattr("hub.main.get_config_path", lambda f: str(inv_file) if "inventory" in f else None)
-
-    # 1. Add new promotion rule
-    resp = client.post("/add_promotion", data={
-        "rule_name": "VIP Dwell Discount",
-        "discount_percent": 25,
-        "trigger_type": "dwell_time",
-        "threshold": 60,
-        "description": "25% discount after 60s dwell"
-    }, follow_redirects=False)
-    assert resp.status_code == 303
-
-    with open(inv_file, "r") as f:
-        data = json.load(f)
-    assert len(data["promotions"]) == 2
-    assert data["promotions"][1]["rule_name"] == "VIP Dwell Discount"
-    assert data["promotions"][1]["discount_percent"] == 25
-
-    # 2. Delete the first promotion rule (index 0)
-    del_resp = client.post("/delete_promotion/0", follow_redirects=False)
-    assert del_resp.status_code == 303
-
-    with open(inv_file, "r") as f:
-        data = json.load(f)
-    assert len(data["promotions"]) == 1
-    assert data["promotions"][0]["rule_name"] == "VIP Dwell Discount"
-
-
 def test_websocket_event_streaming(client):
     # Connect websocket client to /ws/events and verify broadcast reception
     with client.websocket_connect("/ws/events") as websocket:

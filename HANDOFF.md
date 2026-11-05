@@ -1,32 +1,25 @@
 # HANDOFF - Project Sirens (v0.8.0)
 
 ## Session Summary & Overview
-In this session, Project Sirens was upgraded to version **0.8.0**, implementing Coral Edge TPU hardware acceleration loading architecture with fallback tiers, dynamic promotions and automated discount rules engine, and full frontend UI controls within the unified dashboard.
+In this session, Project Sirens was upgraded through versions **0.7.0** and **0.8.0**, implementing the full core vision feature extraction, bounding box distance calibration, 1.5-second dwell time trigger, dominant clothing color heuristics, multimodal Frontier VLM integration with base64 JPEG crops, low-latency sentence token stream chunking (. ! ?), and comprehensive automated testing.
 
-## What Was Accomplished in v0.8.0
-1. **Coral Edge TPU Hardware Acceleration (`src/vision.py`)**:
-   - Implemented `load_vision_model` function prioritizing Edge TPU compiled TFLite models (`yolo11n_edgetpu.tflite` via PyCoral/TFLite delegate) to prevent thermal throttling on edge devices like the Raspberry Pi 5.
-   - Built a three-tier fallback hierarchy: Edge TPU TFLite -> PyTorch `yolo11n.pt` -> `MockYOLO`.
-   - Adhered strictly to top-level Python import hygiene.
-2. **Dynamic Promotions & Discount Engine (`hub/main.py`, `config/inventory.json`)**:
-   - Extended catalog schema with automated promotion rules (`rule_name`, `discount_percent`, `trigger_type`, `threshold`, `description`).
-   - Implemented `POST /add_promotion` and `POST /delete_promotion/{promo_index}` endpoints using the PRG pattern.
-   - Built interactive rule management UI directly in `hub/templates/index.html` with badges and tooltips (`ⓘ`).
-3. **Automated Testing & Visual Verification**:
-   - Added `tests/test_vision.py` verifying multi-tier model loading fallback logic.
-   - Added promotion creation and deletion integration tests in `tests/test_api.py`.
-   - All 18 tests pass with 100% success rate.
-   - Executed Playwright automation and visually inspected `promotions_engine_verified.png`.
-
-## Prior Accomplishments in v0.7.0
-1. **Real-Time WebSocket Streaming (`/ws/events`)**:
-   - Implemented an asynchronous `ConnectionManager` inside `hub/main.py`.
-   - Connected `/api/log_interaction` to broadcast new interaction events to all active dashboard clients.
-   - Pinned `websockets==17.4` in `requirements.txt`.
-2. **Dynamic UI Live Feed Streaming**:
-   - Added WebSocket client listener script in `hub/templates/index.html`.
-   - Added status badge `WS Stream: Live` in the top header.
-   - Live interaction cards are automatically formatted and prepended to `#interaction-feed-container` without manual page reload.
+## What Was Accomplished in v0.8.0 (Core Vision & Frontier VLM Multimodal Integration)
+1. **Core Vision Processing & Distance Calibration (`src/vision.py`)**:
+   - Implemented `calculate_proximity` using inverse proportional height ratios calibrated for retail focal distances.
+   - Built `is_target_dwelling` tracking customer persistence with a 1.5-second dwell threshold before triggering locks.
+   - Built `extract_visual_attributes` extracting HSV apparel color heuristics (e.g. dark jackets, blue outerwear, warm tones) without saving images to disk.
+   - Implemented base64 JPEG compression in the customer detection payload sent over Redis `CUSTOMER_DETECTED`.
+   - Enforced 60-second in-memory bounding box memory buffer purging for privacy compliance.
+2. **Frontier VLM Multimodal Client (`src/llm_client.py`)**:
+   - Implemented `format_multimodal_user_content` structuring text attributes alongside low-resolution image URLs for OpenAI/Gemini vision models.
+   - Updated `generate_sales_response` to invoke multimodal chat completions when API keys are configured, falling back to deterministic psychological responses if unavailable.
+   - Built `chunk_text_stream` splitting token streams on sentence delimiters (`.`, `!`, `?`) to hide latency for Piper TTS playback.
+3. **Edge Orchestrator Hardening (`src/main.py`)**:
+   - Subscribed to `CUSTOMER_DETECTED` and `AUDIO_CHUNK_READY` with asynchronous background task management and clean cancellation handlers.
+4. **Automated Testing Suite**:
+   - Created `tests/test_vision.py` covering model loading fallback, proximity distance calculation, dwell time triggers, and color extraction.
+   - Updated `tests/test_conversation.py` covering multimodal user content generation, sentence stream chunking, and API mock interception.
+   - All 23 tests pass cleanly.
 
 ## What Was Accomplished in v0.7.0
 1. **Real-Time WebSocket Streaming (`/ws/events`)**:

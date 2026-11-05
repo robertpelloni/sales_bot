@@ -375,7 +375,7 @@
             <div class="system-status-group">
                 <div class="status-pill">
                     <span class="status-dot"></span>
-                    <span>Hub v0.8.0 Online</span>
+                    <span>Hub v0.7.0 Online</span>
                     <span class="tooltip">ⓘ<span class="tooltiptext">FastAPI asynchronous control server running on port 8000.</span></span>
                 </div>
                 <div class="status-pill" id="ws-pill">
@@ -536,14 +536,14 @@
 
             <!-- CONFIGURATION & KNOWLEDGE BASE ROW (CONSOLIDATED) -->
 
-            <!-- KNOWLEDGE BASE: PRODUCT INVENTORY & DYNAMIC PROMOTIONS -->
+            <!-- KNOWLEDGE BASE: PRODUCT INVENTORY -->
             <div class="card">
                 <div class="card-header">
                     <h2>📦 Product Inventory & Pitch Assets <span class="badge" style="background: #fef3c7; color: #b45309; border: 1px solid #fde68a;">Catalog</span></h2>
                     <span class="tooltip">ⓘ<span class="tooltiptext">The store catalog available for the agent to promote. The agent selects items matching visual cues and weaves Unique Selling Points into pitches.</span></span>
                 </div>
 
-                <div class="scrollable-feed" style="max-height: 200px; margin-bottom: 16px;">
+                <div class="scrollable-feed" style="max-height: 250px; margin-bottom: 16px;">
                     {% for item in items %}
                     <div class="item-card" style="border-left: 3px solid #f59e0b; padding: 10px 12px;">
                         <div style="display: flex; justify-content: space-between; align-items: flex-start;">
@@ -568,7 +568,7 @@
                 </div>
 
                 <!-- Add Product Form -->
-                <form method="post" action="/add_item" style="background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 16px;">
+                <form method="post" action="/add_item" style="background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid var(--border);">
                     <div style="font-weight: 600; font-size: 0.85em; margin-bottom: 8px; color: var(--text-main);">+ Add New Inventory Item</div>
                     <div class="split-2" style="margin-bottom: 8px;">
                         <input type="text" name="product_name" placeholder="Product Name (e.g. AeroFoam Headphones)" required>
@@ -579,72 +579,6 @@
                         <button type="submit" style="background-color: #f59e0b; white-space: nowrap;">Add Item</button>
                     </div>
                 </form>
-
-                <!-- DYNAMIC PROMOTIONS SUB-SECTION -->
-                <div style="border-top: 1px solid var(--border); padding-top: 14px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                        <strong style="font-size: 0.9em; color: var(--text-main);">🏷️ Dynamic Discount Rules
-                            <span class="tooltip">ⓘ<span class="tooltiptext">Automated discount triggers based on customer dwell time, matching visual attributes, or volume engagement.</span></span>
-                        </strong>
-                        <span class="badge" style="background: #ede9fe; color: #6d28d9; border: 1px solid #ddd6fe;">Automated Pricing</span>
-                    </div>
-
-                    <div class="scrollable-feed" style="max-height: 140px; margin-bottom: 12px;">
-                        {% for promo in promotions %}
-                        <div class="item-card" style="border-left: 3px solid #8b5cf6; padding: 8px 10px; margin-bottom: 8px; font-size: 0.85em;">
-                            <div style="display: flex; justify-content: space-between; align-items: center;">
-                                <div>
-                                    <strong>{{ promo.rule_name }}</strong>
-                                    <span style="color: var(--success); font-weight: bold; margin-left: 6px;">{{ promo.discount_percent }}% OFF</span>
-                                    <span style="color: var(--text-muted); font-size: 0.8em; margin-left: 6px;">({{ promo.trigger_type }} &ge; {{ promo.threshold }})</span>
-                                    {% if promo.description %}
-                                    <div style="color: var(--text-muted); font-size: 0.8em; margin-top: 2px;">{{ promo.description }}</div>
-                                    {% endif %}
-                                </div>
-                                <form method="post" action="/delete_promotion/{{ loop.index0 }}" style="margin: 0;">
-                                    <button type="submit" class="btn-danger" style="padding: 2px 6px; font-size: 0.7em;" title="Delete promotion rule">✕</button>
-                                </form>
-                            </div>
-                        </div>
-                        {% else %}
-                        <p style="color: var(--text-muted); font-style: italic; font-size: 0.85em;">No active promotion rules.</p>
-                        {% endfor %}
-                    </div>
-
-                    <!-- Add Promotion Form -->
-                    <form method="post" action="/add_promotion" style="background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid var(--border);">
-                        <div style="font-weight: 600; font-size: 0.85em; margin-bottom: 8px; color: var(--text-main);">+ Add Automated Discount Rule</div>
-                        <div class="split-3" style="margin-bottom: 8px;">
-                            <div>
-                                <label style="font-size: 0.75em; margin-bottom: 2px;">Rule Name</label>
-                                <input type="text" name="rule_name" placeholder="e.g. High Dwell Discount" required style="padding: 6px 8px; font-size: 0.8em;">
-                            </div>
-                            <div>
-                                <label style="font-size: 0.75em; margin-bottom: 2px;">Discount %</label>
-                                <input type="number" name="discount_percent" min="1" max="100" placeholder="e.g. 15" required style="padding: 6px 8px; font-size: 0.8em;">
-                            </div>
-                            <div>
-                                <label style="font-size: 0.75em; margin-bottom: 2px;">Trigger</label>
-                                <select name="trigger_type" style="padding: 6px 8px; font-size: 0.8em;">
-                                    <option value="dwell_time">Dwell Time (seconds)</option>
-                                    <option value="attribute_match">Attribute Match Count</option>
-                                    <option value="repeat_visit">Repeat Visit Count</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div style="display: flex; gap: 8px; align-items: flex-end;">
-                            <div style="width: 120px;">
-                                <label style="font-size: 0.75em; margin-bottom: 2px;">Threshold</label>
-                                <input type="number" name="threshold" min="1" value="30" required style="padding: 6px 8px; font-size: 0.8em;">
-                            </div>
-                            <div style="flex-grow: 1;">
-                                <label style="font-size: 0.75em; margin-bottom: 2px;">Description / Pitch Script Hook</label>
-                                <input type="text" name="description" placeholder="Optional rationale for agent..." style="padding: 6px 8px; font-size: 0.8em;">
-                            </div>
-                            <button type="submit" id="add-promotion-btn" style="background-color: #8b5cf6; padding: 6px 14px; font-size: 0.85em; white-space: nowrap; height: 35px;">Add Rule</button>
-                        </div>
-                    </form>
-                </div>
             </div>
 
             <!-- AGENT SALES PSYCHOLOGY & SYSTEM SETTINGS -->

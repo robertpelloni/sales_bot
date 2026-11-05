@@ -15,14 +15,17 @@
 - [x] Added `test_websocket_event_streaming` in `tests/test_api.py` and visual Playwright verification.
 
 ## Completed in 0.8.0
-- [x] Implement Coral Edge TPU compiled TFLite model runner for YOLOv11n in `src/vision.py` with multi-tier fallback.
-- [x] Add dynamic discount and promotion rule builder to the Inventory panel with UI badges and PRG management endpoints.
-- [x] Comprehensive test coverage in `tests/test_vision.py` and `tests/test_api.py`.
-- [x] Playwright visual verification of promotion creation and dashboard rendering.
+- [x] Implement bounding box distance calibration and proximity calculation in `src/vision.py`.
+- [x] Implement 1.5s dwell time locking before triggering VLM customer engagement.
+- [x] Extract dominant clothing color heuristics and apparel traits from cropped bounding box frames.
+- [x] Package structured metadata JSON with base64 encoded JPEG crops for multimodal context.
+- [x] Implement multimodal OpenAI/Gemini chat completions in `src/llm_client.py` with mock fallbacks.
+- [x] Implement sentence-level stream chunking (. ! ?) in `src/llm_client.py` for low-latency Piper TTS piping.
+- [x] Comprehensive test coverage in `tests/test_vision.py` and `tests/test_conversation.py`.
 
 ## Short-Term (0.9.0)
-- [ ] Multi-kiosk fleet synchronization via central Redis clustering or gRPC mesh.
-- [ ] Automated A/B test convergence engine using multi-armed bandits on customer dwell time.
+- [ ] Implement Coral Edge TPU compiled TFLite model runner for YOLOv11n in `src/vision.py`.
+- [ ] Add dynamic discount rule builder to the Inventory panel for automated volume pricing.
 
 ## Long-Term (1.0.0+)
 - [ ] Multi-kiosk fleet synchronization via central Redis clustering or gRPC mesh.
