@@ -25,11 +25,32 @@ Configuration and administration endpoints are protected with HTTP Basic Authent
 {
   "status": "healthy",
   "service": "Project Sirens Hub",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "mock_vision": true,
   "camera_index": "0",
   "has_openai_key": false,
   "inventory_item_count": 3
+}
+```
+
+### 3. `WebSocket /ws/events`
+- **Description**: Real-time duplex WebSocket stream. On connection, clients receive live push events broadcast whenever new customer interactions are captured or logged.
+- **Message Type**: JSON
+- **Payload Schema**:
+```json
+{
+  "type": "new_interaction",
+  "data": {
+    "id": 105,
+    "detected_attributes": "navy blue windbreaker, baseball cap",
+    "dialogue": "Handcrafted windbreakers on special today!",
+    "strategy": "Pattern Interrupt",
+    "timestamp": "2026-11-05 05:00:00",
+    "tts_latency": "115ms",
+    "is_lead": false,
+    "rating": 1,
+    "follow_up": null
+  }
 }
 ```
 

@@ -375,8 +375,13 @@
             <div class="system-status-group">
                 <div class="status-pill">
                     <span class="status-dot"></span>
-                    <span>Hub v0.6.0 Online</span>
+                    <span>Hub v0.7.0 Online</span>
                     <span class="tooltip">ⓘ<span class="tooltiptext">FastAPI asynchronous control server running on port 8000.</span></span>
+                </div>
+                <div class="status-pill" id="ws-pill">
+                    <span class="status-dot" id="ws-dot" style="background: var(--warning);"></span>
+                    <span id="ws-status-text">WS Stream: Connecting</span>
+                    <span class="tooltip">ⓘ<span class="tooltiptext">Real-time WebSocket connection to /ws/events for live in-store stream without refreshes.</span></span>
                 </div>
                 <div class="status-pill">
                     <span class="status-dot {% if use_mock_vision == 'True' %}warning{% endif %}"></span>
@@ -476,7 +481,7 @@
                 </div>
 
                 <!-- Scrollable CRM Stream -->
-                <div class="scrollable-feed">
+                <div class="scrollable-feed" id="interaction-feed-container">
                     {% for interaction in interactions %}
                     <div class="item-card {% if interaction.is_lead %}lead-card{% endif %}">
                         <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px;">
@@ -752,6 +757,88 @@
                 }
             }
         });
+
+        // Real-Time WebSocket Client
+        function initWebSocket() {
+            const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${wsProtocol}//${window.location.host}/ws/events`;
+            const wsDot = document.getElementById('ws-dot');
+            const wsText = document.getElementById('ws-status-text');
+
+            const socket = new WebSocket(wsUrl);
+
+            socket.onopen = () => {
+                wsDot.style.background = 'var(--success)';
+                wsText.innerText = 'WS Stream: Live';
+            };
+
+            socket.onclose = () => {
+                wsDot.style.background = 'var(--danger)';
+                wsText.innerText = 'WS Stream: Disconnected';
+                // Attempt reconnection after 3 seconds
+                setTimeout(initWebSocket, 3000);
+            };
+
+            socket.onerror = () => {
+                wsDot.style.background = 'var(--danger)';
+                wsText.innerText = 'WS Stream: Error';
+            };
+
+            socket.onmessage = (event) => {
+                try {
+                    const msg = JSON.parse(event.data);
+                    if (msg.event === 'NEW_INTERACTION' && msg.data) {
+                        const item = msg.data;
+                        const container = document.getElementById('interaction-feed-container');
+                        if (!container) return;
+
+                        const newCard = document.createElement('div');
+                        newCard.className = `item-card ${item.is_lead ? 'lead-card' : ''}`;
+                        newCard.style.animation = 'fadeIn 0.5s ease-in-out';
+                        newCard.innerHTML = `
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px;">
+                                <div>
+                                    <span style="font-weight: 600; color: var(--text-main); font-size: 0.9em;">Detected: ${item.attributes}</span>
+                                    ${item.is_lead ? '<span class="badge badge-lead" style="margin-left: 6px;">Qualified Lead</span>' : ''}
+                                </div>
+                                <span style="font-size: 0.75em; color: var(--text-muted); white-space: nowrap;">
+                                    ${item.timestamp}
+                                </span>
+                            </div>
+                            <div class="response-quote">"${item.response}"</div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 0.8em; color: var(--text-muted); margin-bottom: 8px;">
+                                <span>Framework: <strong>${item.sales_framework}</strong></span>
+                                ${item.tts_latency_ms > 0 ? `<span>Piper TTS Latency: <strong>${item.tts_latency_ms}ms</strong></span>` : ''}
+                            </div>
+                            <div style="background: #f1f5f9; padding: 8px 12px; border-radius: 6px; display: flex; flex-direction: column; gap: 8px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <form method="post" action="/mark_lead/${item.id}" style="margin: 0;">
+                                        <input type="hidden" name="is_lead" value="${item.is_lead ? 'False' : 'True'}">
+                                        <button type="submit" style="padding: 4px 10px; font-size: 0.8em; background-color: ${item.is_lead ? '#64748b' : 'var(--success)'};">
+                                            ${item.is_lead ? '✓ Remove Lead Flag' : '★ Flag as Qualified Lead'}
+                                        </button>
+                                    </form>
+                                    <form method="post" action="/submit_feedback/${item.id}" style="margin: 0; display: flex; align-items: center; gap: 6px;">
+                                        <span style="font-size: 0.8em; color: var(--text-muted);">Pitch Rating:</span>
+                                        <button type="submit" name="feedback_score" value="1" style="padding: 2px 8px; font-size: 0.85em; background-color: ${item.feedback_score === 1 ? 'var(--danger)' : '#cbd5e1'};">👎</button>
+                                        <button type="submit" name="feedback_score" value="5" style="padding: 2px 8px; font-size: 0.85em; background-color: ${item.feedback_score === 5 ? 'var(--success)' : '#cbd5e1'};">👍</button>
+                                    </form>
+                                </div>
+                                <form method="post" action="/update_follow_up/${item.id}" style="display: flex; gap: 6px; margin: 0;">
+                                    <input type="text" name="follow_up_notes" value="${item.follow_up_notes || ''}" placeholder="Add staff follow-up note..." style="padding: 5px 8px; font-size: 0.85em; flex-grow: 1;">
+                                    <button type="submit" class="btn-secondary" style="padding: 5px 10px; font-size: 0.8em;">Save Note</button>
+                                </form>
+                            </div>
+                        `;
+                        container.prepend(newCard);
+                    }
+                } catch (e) {
+                    console.error("Error processing websocket message:", e);
+                }
+            };
+        }
+
+        window.addEventListener('DOMContentLoaded', initWebSocket);
     </script>
 </body>
 </html>

@@ -9,8 +9,12 @@
 - [x] Fix Python 3.12 `datetime.datetime.utcnow()` deprecations across backend modules.
 - [x] Implement comprehensive unit tests in `tests/test_tray.py` and visual Playwright verification.
 
-## Short-Term (0.7.0)
-- [ ] Add real-time WebSocket connection to `hub/main.py` for live event broadcasting to UI without polling.
+## Immediate (Completed in 0.7.0)
+- [x] Add real-time WebSocket connection to `hub/main.py` (`/ws/events`) for live event broadcasting to UI without polling.
+- [x] Dynamic dashboard live feed insertion and connection status badge in `hub/templates/index.html`.
+- [x] Added `test_websocket_event_streaming` in `tests/test_api.py` and visual Playwright verification.
+
+## Short-Term (0.8.0)
 - [ ] Implement Coral Edge TPU compiled TFLite model runner for YOLOv11n in `src/vision.py`.
 - [ ] Add dynamic discount rule builder to the Inventory panel for automated volume pricing.
 

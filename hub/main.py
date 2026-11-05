@@ -7,7 +7,8 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from contextlib import asynccontextmanager
 import signal
-from fastapi import FastAPI, Request, Form, Depends, HTTPException, status
+from typing import List
+from fastapi import FastAPI, Request, Form, Depends, HTTPException, status, WebSocket, WebSocketDisconnect
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 import secrets
@@ -16,6 +17,30 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import func, Integer, select
 from .database import get_db, init_db, Interaction
+
+
+class ConnectionManager:
+    """Manages active WebSocket connections for broadcasting real-time dashboard events."""
+    def __init__(self):
+        self.active_connections: List[WebSocket] = []
+
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.append(websocket)
+
+    def disconnect(self, websocket: WebSocket):
+        if websocket in self.active_connections:
+            self.active_connections.remove(websocket)
+
+    async def broadcast(self, message: dict):
+        for connection in list(self.active_connections):
+            try:
+                await connection.send_json(message)
+            except Exception:
+                self.disconnect(connection)
+
+
+ws_manager = ConnectionManager()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -65,6 +90,23 @@ async def log_interaction(interaction: InteractionCreate, db: AsyncSession = Dep
         db.add(db_interaction)
         await db.commit()
         await db.refresh(db_interaction)
+
+        # Broadcast event to connected WebSocket dashboards
+        await ws_manager.broadcast({
+            "event": "NEW_INTERACTION",
+            "data": {
+                "id": db_interaction.id,
+                "timestamp": db_interaction.timestamp.strftime('%Y-%m-%d %H:%M'),
+                "attributes": db_interaction.attributes,
+                "response": db_interaction.response,
+                "sales_framework": db_interaction.sales_framework,
+                "tts_latency_ms": db_interaction.tts_latency_ms,
+                "is_lead": db_interaction.is_lead,
+                "follow_up_notes": db_interaction.follow_up_notes,
+                "feedback_score": db_interaction.feedback_score
+            }
+        })
+
         return {"status": "success", "id": db_interaction.id}
     except Exception as e:
         await db.rollback()
@@ -362,6 +404,20 @@ async def submit_feedback(request: Request, interaction_id: int, feedback_score:
         return await read_root(request, error_message=f"Error updating feedback score: {e}", db=db)
 
     return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@app.websocket("/ws/events")
+async def websocket_events_endpoint(websocket: WebSocket):
+    """Real-time event stream for connected dashboard sessions."""
+    await ws_manager.connect(websocket)
+    try:
+        while True:
+            # Keep connection alive; accept client pings/messages
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        ws_manager.disconnect(websocket)
+    except Exception:
+        ws_manager.disconnect(websocket)
 
 
 @app.post("/simulate_detection")

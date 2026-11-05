@@ -29,6 +29,11 @@
   - Expose `/api/status` and `/api/server/shutdown` endpoints.
   - Provide unified server management scripts in `scripts/`.
 
-- Phase 7: Edge Hardware Acceleration & Hailo / TPU Integrations (Planned 0.7.0)
+- Phase 7: Real-Time WebSocket Streaming & Dynamic Feed (Completed 0.7.0)
+  - Real-time duplex WebSocket stream (`/ws/events`) with `ConnectionManager`.
+  - Push new customer interaction events directly to the dashboard DOM without polling.
+  - Visual Playwright E2E verification of live feed card insertion.
+
+- Phase 8: Edge Hardware Acceleration & Hailo / TPU Integrations (Planned 0.8.0)
   - Integrate native Raspberry Pi AI Camera IMX500 hardware neural network models.
   - Support Coral Edge TPU TFLite runtime models for zero-CPU vision inference.

@@ -1,9 +1,22 @@
-# HANDOFF - Project Sirens (v0.6.0)
+# HANDOFF - Project Sirens (v0.7.0)
 
 ## Session Summary & Overview
-In this session, Project Sirens was upgraded to version **0.6.0**, completing a full redesign of the Hub dashboard, implementing desktop system tray lifecycle controls, adding graceful shutdown and health inspection APIs, modernizing backend lifecycle handlers, and structuring a clean server management script suite.
+In this session, Project Sirens was upgraded to version **0.7.0**, completing real-time duplex WebSocket interaction streaming from the backend to the unified dashboard, dynamic DOM injection of new customer interactions without page reloading, and updating documentation and test suites.
 
-## What Was Accomplished
+## What Was Accomplished in v0.7.0
+1. **Real-Time WebSocket Streaming (`/ws/events`)**:
+   - Implemented an asynchronous `ConnectionManager` inside `hub/main.py`.
+   - Connected `/api/log_interaction` to broadcast new interaction events to all active dashboard clients.
+   - Pinned `websockets==17.4` in `requirements.txt`.
+2. **Dynamic UI Live Feed Streaming**:
+   - Added WebSocket client listener script in `hub/templates/index.html`.
+   - Added status badge `WS Stream: Live` in the top header.
+   - Live interaction cards are automatically formatted and prepended to `#interaction-feed-container` without manual page reload.
+3. **Automated & Visual Verification**:
+   - Added `test_websocket_event_streaming` in `tests/test_api.py`.
+   - Verified via Playwright automation (`verify_websocket.py`) and captured `/home/jules/verification/websocket_live_feed.png`.
+
+## Prior Accomplishments in v0.6.0
 1. **Repository Synchronization**:
    - Cleanly integrated all feature branches and initialized Git submodules recursively (`vendor/piper`, `vendor/yolov11-edge`).
    - Cleaned local database state and enforced `.gitignore` standards.

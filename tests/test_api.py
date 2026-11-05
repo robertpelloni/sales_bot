@@ -123,3 +123,27 @@ def test_server_status_and_shutdown(client):
         response = client.post("/api/server/shutdown")
         assert response.status_code == 200
         assert response.json()["status"] == "shutting_down"
+
+
+def test_websocket_event_streaming(client):
+    # Connect websocket client to /ws/events and verify broadcast reception
+    with client.websocket_connect("/ws/events") as websocket:
+        # Trigger an interaction via the REST webhook
+        post_resp = client.post(
+            "/api/log_interaction",
+            json={
+                "attributes": "red sneakers, baseball cap",
+                "response": "Real-time stream test pitch.",
+                "sales_framework": "Challenger",
+                "tts_latency_ms": 120
+            }
+        )
+        assert post_resp.status_code == 200
+
+        # Receive the event over WebSocket
+        data = websocket.receive_json()
+        assert data["event"] == "NEW_INTERACTION"
+        assert data["data"]["attributes"] == "red sneakers, baseball cap"
+        assert data["data"]["response"] == "Real-time stream test pitch."
+        assert data["data"]["sales_framework"] == "Challenger"
+        assert data["data"]["tts_latency_ms"] == 120

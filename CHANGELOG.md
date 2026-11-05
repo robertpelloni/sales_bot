@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## [0.7.0] - Real-Time WebSocket Streaming & Live CRM Event Push
+- **WebSocket Streaming (`/ws/events`)**: Added FastAPI WebSocket route with `ConnectionManager` to push customer interactions directly to connected dashboard clients without polling.
+- **Dynamic Dashboard Feed Updates**: Enhanced `hub/templates/index.html` with real-time WebSocket client listener, connection status pill (`WS Stream: Live`), auto-reconnect backoff logic, and instant UI prepending of new interaction cards into the CRM stream.
+- **WebSocket Protocol Integration**: Added pinned `websockets` dependency to `requirements.txt` to support Uvicorn WebSocket serving.
+- **End-to-End WebSocket Testing**: Added `test_websocket_event_streaming` in `tests/test_api.py` and Playwright visual verification script confirming real-time feed update behavior.
+
 ## [0.6.0] - Unified Dashboard Redesign, Desktop Tray Controller & Lifecycle Automation
 - **Unified Single-Page Dashboard**: Completely redesigned `hub/templates/index.html` with a modern, responsive, high-value-first layout. Placed real-time system status indicators and server lifecycle controls at the top header, followed by the Simulation Engine and Live CRM Analytics feed with Chart.js charts, and consolidated Product Inventory and Psychology Settings below.
 - **Desktop System Tray Controller (`src/tray_app.py`)**: Built a cross-platform system tray manager using `pystray` and `PIL` with dynamic lightning bolt taskbar icon rendering, browser launch shortcuts, server status monitoring, and graceful process shutdown controls. Includes automatic headless/display detection fallback for CI and server deployments.
