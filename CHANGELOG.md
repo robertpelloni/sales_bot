@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## [0.8.0] - Coral Edge TPU Hardware Acceleration & Dynamic Promotion Rules Engine
+- **Coral Edge TPU Hardware Acceleration (`src/vision.py`)**: Added `load_vision_model` helper preferentially loading Edge TPU compiled TFLite models (`yolo11n_edgetpu.tflite` via `edgetpu` lib) to prevent thermal throttling on edge devices (Raspberry Pi 5 / Coral Accelerator), falling back to PyTorch `yolo11n.pt` and graceful `MockYOLO`.
+- **Dynamic Promotions & Automated Discount Engine**: Extended `config/inventory.json` schema with automated promotion rules (`rule_name`, `discount_percent`, `trigger_type`, `threshold`, `description`).
+- **Hub Promotion Endpoints & UI Controls**: Implemented `POST /add_promotion` and `POST /delete_promotion/{promo_index}` endpoints using the PRG pattern, rendering interactive rule management and dynamic badges directly inside the unified dashboard.
+- **Top-level Import Hygiene & Dependency Hardening**: Ensured all imports in vision modules reside cleanly at top of files; installed `opencv-python-headless` for headless container/CI environments.
+- **Vision & Promotion Test Suite**: Added `tests/test_vision.py` and `test_add_and_delete_promotion` in `tests/test_api.py` achieving 100% test pass rate across all 18 test cases.
+
 ## [0.7.0] - Real-Time WebSocket Streaming & Live CRM Event Push
 - **WebSocket Streaming (`/ws/events`)**: Added FastAPI WebSocket route with `ConnectionManager` to push customer interactions directly to connected dashboard clients without polling.
 - **Dynamic Dashboard Feed Updates**: Enhanced `hub/templates/index.html` with real-time WebSocket client listener, connection status pill (`WS Stream: Live`), auto-reconnect backoff logic, and instant UI prepending of new interaction cards into the CRM stream.

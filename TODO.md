@@ -14,9 +14,15 @@
 - [x] Dynamic dashboard live feed insertion and connection status badge in `hub/templates/index.html`.
 - [x] Added `test_websocket_event_streaming` in `tests/test_api.py` and visual Playwright verification.
 
-## Short-Term (0.8.0)
-- [ ] Implement Coral Edge TPU compiled TFLite model runner for YOLOv11n in `src/vision.py`.
-- [ ] Add dynamic discount rule builder to the Inventory panel for automated volume pricing.
+## Completed in 0.8.0
+- [x] Implement Coral Edge TPU compiled TFLite model runner for YOLOv11n in `src/vision.py` with multi-tier fallback.
+- [x] Add dynamic discount and promotion rule builder to the Inventory panel with UI badges and PRG management endpoints.
+- [x] Comprehensive test coverage in `tests/test_vision.py` and `tests/test_api.py`.
+- [x] Playwright visual verification of promotion creation and dashboard rendering.
+
+## Short-Term (0.9.0)
+- [ ] Multi-kiosk fleet synchronization via central Redis clustering or gRPC mesh.
+- [ ] Automated A/B test convergence engine using multi-armed bandits on customer dwell time.
 
 ## Long-Term (1.0.0+)
 - [ ] Multi-kiosk fleet synchronization via central Redis clustering or gRPC mesh.

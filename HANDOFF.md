@@ -1,7 +1,32 @@
-# HANDOFF - Project Sirens (v0.7.0)
+# HANDOFF - Project Sirens (v0.8.0)
 
 ## Session Summary & Overview
-In this session, Project Sirens was upgraded to version **0.7.0**, completing real-time duplex WebSocket interaction streaming from the backend to the unified dashboard, dynamic DOM injection of new customer interactions without page reloading, and updating documentation and test suites.
+In this session, Project Sirens was upgraded to version **0.8.0**, implementing Coral Edge TPU hardware acceleration loading architecture with fallback tiers, dynamic promotions and automated discount rules engine, and full frontend UI controls within the unified dashboard.
+
+## What Was Accomplished in v0.8.0
+1. **Coral Edge TPU Hardware Acceleration (`src/vision.py`)**:
+   - Implemented `load_vision_model` function prioritizing Edge TPU compiled TFLite models (`yolo11n_edgetpu.tflite` via PyCoral/TFLite delegate) to prevent thermal throttling on edge devices like the Raspberry Pi 5.
+   - Built a three-tier fallback hierarchy: Edge TPU TFLite -> PyTorch `yolo11n.pt` -> `MockYOLO`.
+   - Adhered strictly to top-level Python import hygiene.
+2. **Dynamic Promotions & Discount Engine (`hub/main.py`, `config/inventory.json`)**:
+   - Extended catalog schema with automated promotion rules (`rule_name`, `discount_percent`, `trigger_type`, `threshold`, `description`).
+   - Implemented `POST /add_promotion` and `POST /delete_promotion/{promo_index}` endpoints using the PRG pattern.
+   - Built interactive rule management UI directly in `hub/templates/index.html` with badges and tooltips (`ⓘ`).
+3. **Automated Testing & Visual Verification**:
+   - Added `tests/test_vision.py` verifying multi-tier model loading fallback logic.
+   - Added promotion creation and deletion integration tests in `tests/test_api.py`.
+   - All 18 tests pass with 100% success rate.
+   - Executed Playwright automation and visually inspected `promotions_engine_verified.png`.
+
+## Prior Accomplishments in v0.7.0
+1. **Real-Time WebSocket Streaming (`/ws/events`)**:
+   - Implemented an asynchronous `ConnectionManager` inside `hub/main.py`.
+   - Connected `/api/log_interaction` to broadcast new interaction events to all active dashboard clients.
+   - Pinned `websockets==17.4` in `requirements.txt`.
+2. **Dynamic UI Live Feed Streaming**:
+   - Added WebSocket client listener script in `hub/templates/index.html`.
+   - Added status badge `WS Stream: Live` in the top header.
+   - Live interaction cards are automatically formatted and prepended to `#interaction-feed-container` without manual page reload.
 
 ## What Was Accomplished in v0.7.0
 1. **Real-Time WebSocket Streaming (`/ws/events`)**:
