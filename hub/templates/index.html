@@ -375,7 +375,7 @@
             <div class="system-status-group">
                 <div class="status-pill">
                     <span class="status-dot"></span>
-                    <span>Hub v1.1.0 Online</span>
+                    <span>Hub v1.2.0 Online</span>
                     <span class="tooltip">ⓘ<span class="tooltiptext">FastAPI asynchronous control server running on port 8000.</span></span>
                 </div>
                 <div class="status-pill" id="ws-pill">
@@ -426,6 +426,31 @@
                         <input type="text" id="attributes" name="attributes" value="navy blue windbreaker, baseball cap, holding coffee" required>
                     </div>
 
+                    <div class="split-3">
+                        <div class="form-group">
+                            <label for="dwell_time_s">Dwell Time (Seconds)
+                                <span class="tooltip">ⓘ<span class="tooltiptext">Tracked dwell duration from edge vision (>5s triggers critical urgency and inventory scarcity hooks).</span></span>
+                            </label>
+                            <input type="number" id="dwell_time_s" name="dwell_time_s" step="0.5" min="0.0" max="60.0" value="5.5" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="distance_m">Proximity Distance (m)
+                                <span class="tooltip">ⓘ<span class="tooltiptext">Calibrated distance: close (≤1.2m), mid-range (1.2-2.5m), far (>2.5m).</span></span>
+                            </label>
+                            <input type="number" id="distance_m" name="distance_m" step="0.1" min="0.5" max="10.0" value="1.0" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="proximity">Zone Descriptor
+                                <span class="tooltip">ⓘ<span class="tooltiptext">Spatial zone calculated from bounding box height ratios.</span></span>
+                            </label>
+                            <select id="proximity" name="proximity">
+                                <option value="1.0m (close)" selected>1.0m (close)</option>
+                                <option value="1.8m (mid-range)">1.8m (mid-range)</option>
+                                <option value="3.2m (far)">3.2m (far)</option>
+                            </select>
+                        </div>
+                    </div>
+
                     <div class="split-2">
                         <div class="form-group">
                             <label for="system_prompt_override">Prompt Override (A/B Test)
@@ -459,9 +484,19 @@
 
             <!-- HIGH-PRIORITY COLUMN 2: LIVE INTERACTION LOG & ANALYTICS -->
             <div class="card card-high-value">
-                <div class="card-header">
-                    <h2>📊 Live CRM Feed & Analytics <span class="badge badge-lead">Live SQLite Stream</span></h2>
-                    <span class="tooltip">ⓘ<span class="tooltiptext">Real-time log of in-store customer engagements persisted in sirens.db. Allows qualifying leads, rating responses, and logging sales staff notes.</span></span>
+                <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <h2>📊 Live CRM Feed & Analytics <span class="badge badge-lead">Live SQLite Stream</span></h2>
+                        <span class="tooltip">ⓘ<span class="tooltiptext">Real-time log of in-store customer engagements persisted in sirens.db. Allows qualifying leads, rating responses, and logging sales staff notes.</span></span>
+                    </div>
+                    <div style="display: flex; gap: 6px; align-items: center;">
+                        <a href="/api/leads/export?all=false" download="crm_leads.csv" class="btn-secondary" style="padding: 4px 10px; font-size: 0.78em; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; border: 1px solid var(--border); border-radius: 6px; background: #ffffff; color: var(--text-main);">
+                            📥 Export Leads (CSV)
+                        </a>
+                        <a href="/api/leads/export?all=true" download="crm_all_interactions.csv" class="btn-secondary" style="padding: 4px 8px; font-size: 0.78em; text-decoration: none; border: 1px solid var(--border); border-radius: 6px; background: #f8fafc; color: var(--text-muted);" title="Export complete raw interaction log">
+                            All Logs
+                        </a>
+                    </div>
                 </div>
 
                 <!-- Visual Charts Sub-Grid -->

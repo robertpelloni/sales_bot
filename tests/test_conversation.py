@@ -12,8 +12,76 @@ from llm_client import (
     construct_system_prompt,
     chunk_text_stream,
     format_multimodal_user_content,
-    process_vlm_stream
+    process_vlm_stream,
+    derive_scarcity_and_urgency
 )
+
+
+def test_derive_scarcity_and_urgency():
+    """Verifies that dwell time and spatial proximity scale urgency and generate appropriate scarcity directives."""
+    # Critical scarcity: long dwell time (>5s) and intimate proximity
+    level, directive = derive_scarcity_and_urgency({
+        "dwell_time_s": 5.5,
+        "proximity": "1.0m (close)",
+        "distance_m": 1.0
+    })
+    assert level == "CRITICAL_SCARCITY"
+    assert "intimate proximity" in directive
+    assert "scarcity" in directive
+
+    # High urgency: dwell time >= 3.0s
+    level, directive = derive_scarcity_and_urgency({
+        "dwell_time_s": 3.8,
+        "proximity": "1.8m (mid-range)",
+        "distance_m": 1.8
+    })
+    assert level == "HIGH_URGENCY"
+    assert "selling out fast" in directive
+
+    # Moderate urgency: close proximity without extended dwell time
+    level, directive = derive_scarcity_and_urgency({
+        "dwell_time_s": 1.2,
+        "proximity": "1.0m (close)",
+        "distance_m": 1.0
+    })
+    assert level == "MODERATE_URGENCY"
+
+    # Mild urgency: mid-range approach
+    level, directive = derive_scarcity_and_urgency({
+        "dwell_time_s": 0.5,
+        "proximity": "2.0m (mid-range)",
+        "distance_m": 2.0
+    })
+    assert level == "MILD_SCARCITY"
+
+
+@pytest.mark.asyncio
+async def test_scarcity_fallback_in_sales_response():
+    """Verifies that fallback responses append scarcity suffixes when urgency is high or critical."""
+    if "OPENAI_API_KEY" in os.environ:
+        del os.environ["OPENAI_API_KEY"]
+
+    # Critical scarcity packet
+    critical_packet = {
+        "attributes": ["navy blue windbreaker"],
+        "dwell_time_s": 6.0,
+        "proximity": "1.0m (close)",
+        "distance_m": 1.0
+    }
+    response = await generate_sales_response("Mock prompt", critical_packet)
+    assert "winter coat" in response
+    assert "only have one or two units left" in response
+
+    # High urgency packet
+    high_urgency_packet = {
+        "attributes": ["holding coffee"],
+        "dwell_time_s": 3.5,
+        "proximity": "1.8m (mid-range)",
+        "distance_m": 1.8
+    }
+    response = await generate_sales_response("Mock prompt", high_urgency_packet)
+    assert "coffee fuel" in response
+    assert "flying off the rack" in response
 
 @pytest.mark.asyncio
 async def test_generate_sales_response():

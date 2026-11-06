@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## [1.2.0] - CRM Leads CSV Export & Real-Time Analytics Reporting
+- **Streaming CRM CSV Export (`hub/main.py`)**: Implemented `GET /api/leads/export` supporting RFC 4180 streaming CSV downloads with headers, sanitization, and optional query filtering (`all=true` for full logs or default qualified leads).
+- **Aggregated Analytics Summary API (`hub/main.py`)**: Added `GET /api/analytics/summary` computing real-time metrics including total interactions, qualified leads count, conversion percentage, average TTS audio latency, and average pitch feedback score.
+- **CRM Dashboard Export Actions (`hub/templates/index.html`)**: Added dedicated "Export Leads (CSV)" and "All Logs" download action buttons directly into the Live CRM Feed & Analytics card header with tooltips and responsive styling.
+- **Analytics & Export Test Suite (`tests/test_leads_export.py`)**: Added comprehensive tests verifying CSV formatting, lead/all filtering, and analytics summary metrics.
+
 ## [1.1.0] - Dynamic Store Promotions Engine & Retail Prompt Synthesis
 - **Dynamic Store Promotions Backend (`config/inventory.json`, `hub/main.py`)**: Added support for dynamic promotional incentive rules (`rule_name`, `discount_percent`, `trigger_type`, `threshold`, `description`). Implemented `POST /add_promotion` and `POST /delete_promotion/{promo_index}` endpoints using Post/Redirect/Get patterns and UI error handling.
 - **Multimodal Prompt Promotion Synthesis (`src/llm_client.py`)**: Wired promotional rules into `construct_system_prompt()`, enabling autonomous sales agents to inject active discounts into cold-open pitches and dwell-time offers.

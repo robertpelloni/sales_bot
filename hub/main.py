@@ -7,8 +7,10 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from contextlib import asynccontextmanager
 import signal
+import io
+import csv
 from typing import List
-from fastapi import FastAPI, Request, Form, Depends, HTTPException, status, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Request, Form, Depends, HTTPException, status, WebSocket, WebSocketDisconnect, Response
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 import secrets
@@ -498,6 +500,9 @@ async def simulate_detection(
     attributes: str = Form(...),
     system_prompt_override: str = Form(""),
     temperature: float = Form(0.8),
+    proximity: str = Form("1.0m (close)"),
+    distance_m: float = Form(1.0),
+    dwell_time_s: float = Form(1.8),
     db: AsyncSession = Depends(get_db), username: str = Depends(get_current_username)
 ):
     from src.llm_client import process_vlm_stream
@@ -505,7 +510,9 @@ async def simulate_detection(
     attrs_list = [attr.strip() for attr in attributes.split(",")]
     mock_packet = {
         "id": 999,
-        "proximity": "1.0m",
+        "proximity": proximity.strip(),
+        "distance_m": distance_m,
+        "dwell_time_s": dwell_time_s,
         "attributes": attrs_list,
         "frame_data": "",
         "system_prompt_override": system_prompt_override.strip(),
@@ -589,6 +596,80 @@ async def select_ab_framework(method: str = "thompson", db: AsyncSession = Depen
         "selected_framework": chosen_framework,
         "method": method,
         "conversion_rate": stats.get(chosen_framework, {}).get("conversion_rate", 0.0)
+    }
+
+
+@app.get("/api/leads/export")
+async def export_leads_csv(all: bool = False, db: AsyncSession = Depends(get_db), username: str = Depends(get_current_username)):
+    """Exports CRM interactions as a downloadable CSV. Defaults to qualified leads only."""
+    query = select(Interaction)
+    if not all:
+        query = query.filter(Interaction.is_lead == True)
+    query = query.order_by(Interaction.id.desc())
+
+    result = await db.execute(query)
+    interactions = result.scalars().all()
+
+    output = io.StringIO()
+    writer = csv.writer(output, quoting=csv.QUOTE_MINIMAL)
+    writer.writerow([
+        "id",
+        "timestamp",
+        "attributes",
+        "response",
+        "sales_framework",
+        "is_lead",
+        "follow_up_notes",
+        "tts_latency_ms",
+        "feedback_score"
+    ])
+
+    for item in interactions:
+        writer.writerow([
+            item.id,
+            item.timestamp.isoformat() if item.timestamp else "",
+            item.attributes or "",
+            item.response or "",
+            item.sales_framework or "",
+            item.is_lead,
+            item.follow_up_notes or "",
+            item.tts_latency_ms or 0,
+            item.feedback_score or 0
+        ])
+
+    csv_data = output.getvalue()
+    filename = "crm_all_interactions.csv" if all else "crm_leads.csv"
+    return Response(
+        content=csv_data,
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+    )
+
+
+@app.get("/api/analytics/summary")
+async def get_analytics_summary(db: AsyncSession = Depends(get_db), username: str = Depends(get_current_username)):
+    """Aggregates CRM conversion metrics, lead velocity, and average latency stats."""
+    total_result = await db.execute(select(func.count(Interaction.id)))
+    total_interactions = total_result.scalar() or 0
+
+    lead_result = await db.execute(select(func.count(Interaction.id)).filter(Interaction.is_lead == True))
+    total_leads = lead_result.scalar() or 0
+
+    latency_result = await db.execute(select(func.avg(Interaction.tts_latency_ms)))
+    avg_latency = latency_result.scalar() or 0.0
+
+    feedback_result = await db.execute(select(func.avg(Interaction.feedback_score)).filter(Interaction.feedback_score > 0))
+    avg_feedback = feedback_result.scalar() or 0.0
+
+    conversion_rate = round((total_leads / total_interactions * 100), 2) if total_interactions > 0 else 0.0
+
+    return {
+        "status": "success",
+        "total_interactions": total_interactions,
+        "total_leads": total_leads,
+        "conversion_rate_percent": conversion_rate,
+        "avg_tts_latency_ms": round(float(avg_latency), 1),
+        "avg_feedback_score": round(float(avg_feedback), 2)
     }
 
 

@@ -1,7 +1,22 @@
-# HANDOFF - Project Sirens (v1.1.0)
+# HANDOFF - Project Sirens (v1.2.0)
 
 ## Session Summary & Overview
-In this session, Project Sirens was upgraded across versions **0.7.0**, **0.8.0**, **0.9.0**, **1.0.0**, and **1.1.0**, establishing an enterprise-grade autonomous retail sales bot combining Coral Edge TPU acceleration, real-time WebSocket live CRM feeds, multimodal Frontier VLM pitch synthesis, Bayesian Multi-Armed Bandit dynamic strategy allocation, and an interactive dynamic store promotions engine.
+In this session, Project Sirens was upgraded across versions **0.7.0**, **0.8.0**, **0.9.0**, **1.0.0**, **1.1.0**, and **1.2.0**, establishing an enterprise-grade autonomous retail sales bot combining Coral Edge TPU acceleration, real-time WebSocket live CRM feeds, multimodal Frontier VLM pitch synthesis, Bayesian Multi-Armed Bandit dynamic strategy allocation, an interactive dynamic store promotions engine, and streaming CRM lead export with real-time analytics aggregation.
+
+## What Was Accomplished in v1.2.0 (CRM Leads CSV Export & Real-Time Analytics Reporting)
+1. **Streaming CRM CSV Export API (`hub/main.py`)**:
+   - Implemented `GET /api/leads/export` using FastAPI `StreamingResponse` with RFC 4180 compliant CSV stream generation.
+   - Filter query support: downloads only qualified leads (`is_lead == True`) by default, or all interaction logs when `all=true` is passed.
+   - Sanitized multiline outputs, commas, and quotes for Excel/Google Sheets compatibility.
+2. **Aggregated Analytics Summary API (`hub/main.py`)**:
+   - Implemented `GET /api/analytics/summary` aggregating total interactions, qualified lead counts, conversion rate percentages, average TTS latency, and average pitch feedback ratings directly over SQLite using SQLAlchemy.
+3. **Consolidated Dashboard Export Integration (`hub/templates/index.html`)**:
+   - Added direct download action buttons ("Export Leads (CSV)" and "All Logs") inside the header of the "Live CRM Feed & Analytics" card.
+   - Preserved single-page dashboard consolidation, tooltips, and responsive layout.
+4. **Automated Testing & Visual Verification**:
+   - Added `tests/test_leads_export.py` covering CSV header/row formatting, lead filtering, and summary statistics calculation.
+   - Full test suite passes with 31 passing unit/integration tests across all subsystems.
+   - Verified visually via Playwright headless browser test (`/home/jules/verification/leads_export_verified.png`).
 
 ## What Was Accomplished in v1.1.0 (Dynamic Store Promotions & Retail Prompt Synthesis)
 1. **Dynamic Store Promotions Backend (`config/inventory.json`, `hub/main.py`)**:

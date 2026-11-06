@@ -54,6 +54,11 @@
   - Autonomous LLM prompt synthesis of active promotional campaigns into cold-open and dwell-time pitches.
   - Interactive promotions management panel in the consolidated dashboard.
 
-- Phase 12: Multi-Kiosk Fleet Synchronization & Distributed Mesh (Planned 1.2.0)
+- Phase 12: CRM Leads CSV Export & Real-Time Analytics Reporting (Completed 1.2.0)
+  - RFC 4180 streaming CSV export for qualified leads and full interaction history.
+  - Aggregated analytics summary endpoint (`GET /api/analytics/summary`) providing conversion rates and averages.
+  - Header export action triggers directly embedded in the consolidated Live CRM Feed card.
+
+- Phase 13: Multi-Kiosk Fleet Synchronization & Distributed Mesh (Planned 1.3.0)
   - Distributed SQLite sync via Litestream or Raft-backed Redis cluster across multi-kiosk storefront networks.
   - Cross-kiosk customer trajectory handover with privacy-preserving appearance embeddings.

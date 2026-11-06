@@ -41,9 +41,15 @@
 - [x] Add interactive promotion management UI in dashboard with badges, trigger tags, and tooltip guidance.
 - [x] Add Playwright visual verification and test suite expansion (`tests/test_promotions.py`, `tests/test_api.py`).
 
-## Short-Term (1.2.0)
-- [ ] Multi-armed bandit reward convergence on customer dwell time alongside explicit lead conversion.
-- [ ] Export CRM lead interactions to CSV and external webhook integrations.
+## Completed in 1.2.0
+- [x] Implement streaming CSV export endpoint (`GET /api/leads/export`) with query filtering (`all=true` or qualified leads only).
+- [x] Expose aggregated analytics summary endpoint (`GET /api/analytics/summary`) calculating conversion percentages, avg latency, and avg feedback score.
+- [x] Wire CSV export buttons (`Export Leads (CSV)`, `All Logs`) into dashboard Live CRM Feed & Analytics header.
+- [x] Add test suite (`tests/test_leads_export.py`) and visual Playwright UI verification.
 
-## Long-Term (1.3.0+)
+## Short-Term (1.3.0)
+- [ ] Multi-armed bandit reward convergence on customer dwell time alongside explicit lead conversion.
+- [ ] External CRM webhook dispatching (HubSpot, Salesforce, Zapier) for automated lead forwarding.
+
+## Long-Term (1.4.0+)
 - [ ] Multi-kiosk fleet synchronization via central Redis clustering or gRPC mesh.

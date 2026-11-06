@@ -25,7 +25,7 @@ Configuration and administration endpoints are protected with HTTP Basic Authent
 {
   "status": "healthy",
   "service": "Project Sirens Hub",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "mock_vision": true,
   "camera_index": "0",
   "has_openai_key": false,
@@ -146,5 +146,23 @@ Configuration and administration endpoints are protected with HTTP Basic Authent
   "method": "thompson",
   "trials": 15,
   "win_rate": 0.4
+}
+```
+
+### 11. `GET /api/leads/export`
+- **Description**: Streams RFC 4180-compliant CSV data containing customer CRM interaction logs.
+- **Query Parameter**: `all` (boolean, default: `false`). When `true`, exports all interaction logs. When `false`, exports only flagged qualified leads (`is_lead == True`).
+- **Response Headers**: `Content-Type: text/csv; charset=utf-8`, `Content-Disposition: attachment; filename="crm_leads.csv"`
+
+### 12. `GET /api/analytics/summary`
+- **Description**: Returns aggregated statistical metrics across all recorded CRM customer interactions.
+- **Response**:
+```json
+{
+  "total_interactions": 42,
+  "qualified_leads": 14,
+  "conversion_rate_percent": 33.33,
+  "avg_tts_latency_ms": 118.5,
+  "avg_feedback_score": 4.2
 }
 ```

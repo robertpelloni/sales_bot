@@ -46,6 +46,7 @@ Every customer interaction is streamed and persisted in `sirens.db`:
 - **Lead Qualification**: Click **Flag as Qualified Lead** on any successful pitch.
 - **Staff Pitch Ratings**: Rate cold opens with 👎 or 👍 to tune sales rules.
 - **Follow-up Notes**: Add staff notes directly to customer interaction cards.
+- **Exporting CRM Leads & Logs (CSV)**: Click **Export Leads (CSV)** to stream and download all flagged qualified leads directly into an RFC 4180 CSV spreadsheet. To export every customer interaction log regardless of lead qualification, click **All Logs**.
 
 ---
 

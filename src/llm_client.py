@@ -88,19 +88,75 @@ def get_system_config() -> Tuple[Optional[str], str]:
     return api_key, use_mock_vision
 
 
+def derive_scarcity_and_urgency(customer_packet: Dict[str, Any]) -> Tuple[str, str]:
+    """
+    Derives real-time scarcity and urgency modifiers from dwell time and spatial proximity data.
+    - Dwell time: longer dwell (>5.0s) suggests deep hesitation or interest; moderate dwell (>=2.0s) suggests consideration.
+    - Proximity: close (<=1.2m) demands direct exclusivity; mid-range (1.2-2.5m) creates hook urgency; far (>2.5m) creates directional draw.
+    Returns (urgency_level, directive_instruction).
+    """
+    dwell_time = float(customer_packet.get("dwell_time_s", 0.0) or 0.0)
+    proximity = str(customer_packet.get("proximity", "mid-range")).lower()
+    try:
+        distance_m = float(customer_packet.get("distance_m", 1.8) or 1.8)
+    except (ValueError, TypeError):
+        distance_m = 1.8
+
+    # Proximity classification
+    is_close = "close" in proximity or distance_m <= 1.2
+    is_mid = "mid" in proximity or (1.2 < distance_m <= 2.5)
+
+    if dwell_time >= 5.0 and is_close:
+        urgency_level = "CRITICAL_SCARCITY"
+        directive = (
+            f"Customer has dwelled for {dwell_time:.1f}s at intimate proximity ({distance_m}m). "
+            "They are heavily hesitating or considering a purchase. Deliver an intense scarcity hook: "
+            "emphasize that this item has only 1 or 2 units remaining today or that a promotional discount expires in moments."
+        )
+    elif dwell_time >= 3.0:
+        urgency_level = "HIGH_URGENCY"
+        directive = (
+            f"Customer has dwelled for {dwell_time:.1f}s ({proximity}, {distance_m}m). "
+            "Leverage social proof and inventory scarcity: mention that popular sizes or stock in this category "
+            "are selling out fast this afternoon."
+        )
+    elif is_close:
+        urgency_level = "MODERATE_URGENCY"
+        directive = (
+            f"Customer is directly at the kiosk ({distance_m}m). "
+            "Offer a brisk, urgent preview: 'Just unpacked our final batch of these today!'"
+        )
+    elif is_mid:
+        urgency_level = "MILD_SCARCITY"
+        directive = (
+            f"Customer approaching at mid-range ({distance_m}m). "
+            "Use an observational scarcity hook to stop them before they walk past."
+        )
+    else:
+        urgency_level = "STANDARD"
+        directive = "Customer at distance. Warm pattern interrupt to invite them closer."
+
+    return urgency_level, directive
+
+
 def format_multimodal_user_content(customer_packet: Dict[str, Any]) -> List[Dict[str, Any]]:
     """
     Constructs OpenAI/Gemini compatible multimodal message content containing
-    both descriptive customer attributes and optional high-resolution compressed JPEG crop.
+    descriptive customer attributes, dwell time, calibrated distance, and dynamic scarcity directives.
     """
     attributes_str = ", ".join(customer_packet.get("attributes", []))
     proximity = customer_packet.get("proximity", "near")
     distance_m = customer_packet.get("distance_m", "")
+    dwell_time_s = customer_packet.get("dwell_time_s", 0.0)
+
+    urgency_level, scarcity_directive = derive_scarcity_and_urgency(customer_packet)
 
     prompt_text = (
-        f"A customer is approaching and has dwelled in the interaction zone (proximity: {proximity}, distance: {distance_m}m). "
-        f"Detected visual features: {attributes_str}. "
-        "Engage them immediately with an observational, non-creepy pattern interrupt cold-open pitch."
+        f"A customer is in the interaction zone (proximity: {proximity}, distance: {distance_m}m, dwell_time: {dwell_time_s}s).\n"
+        f"Detected visual features: {attributes_str}.\n"
+        f"Dynamic Urgency Level: {urgency_level}\n"
+        f"Behavioral Scarcity Directive: {scarcity_directive}\n"
+        "Engage them immediately with a charismatic, observational pattern interrupt incorporating the scarcity directive."
     )
 
     content_parts: List[Dict[str, Any]] = [{"type": "text", "text": prompt_text}]
@@ -120,9 +176,9 @@ def format_multimodal_user_content(customer_packet: Dict[str, Any]) -> List[Dict
 
 async def generate_sales_response(sys_prompt: str, customer_packet: Dict[str, Any]) -> str:
     """
-    Generates the sales pitch based on system prompt and customer context.
+    Generates the sales pitch based on system prompt, customer context, and dynamic scarcity elements.
     If an OpenAI API key is configured and valid, uses the multimodal chat completion API.
-    Otherwise, gracefully falls back to deterministic psychological mock responses.
+    Otherwise, gracefully falls back to deterministic psychological responses with scaled urgency.
     """
     api_key, _ = get_system_config()
 
@@ -149,18 +205,29 @@ async def generate_sales_response(sys_prompt: str, customer_packet: Dict[str, An
         except Exception as e:
             print(f"Frontier VLM API Error (falling back to local mock): {e}")
 
-    # Fallback heuristic sales psychology logic
+    # Fallback heuristic sales psychology logic with dynamic scarcity & urgency scaling
     attributes = customer_packet.get("attributes", [])
     lower_attrs = " ".join(attributes).lower()
+    urgency_level, _ = derive_scarcity_and_urgency(customer_packet)
+
+    scarcity_suffix = ""
+    if urgency_level == "CRITICAL_SCARCITY":
+        scarcity_suffix = " Just a heads up, we only have one or two units left of this before stock clears out today!"
+    elif urgency_level == "HIGH_URGENCY":
+        scarcity_suffix = " These have been flying off the rack this morning, so definitely grab a look before our current allocation sells out."
+    elif urgency_level == "MODERATE_URGENCY":
+        scarcity_suffix = " We just put out our last batch for the weekend."
 
     if any(k in lower_attrs for k in ["coat", "jacket", "windbreaker", "warm-toned"]):
-        return "That's a serious winter coat. You look like you're actually ready for this wind outside! Come feel how incredibly lightweight this fleece option is right here."
+        pitch = "That's a serious winter coat. You look like you're actually ready for this wind outside! Come feel how incredibly lightweight this fleece option is right here."
     elif any(k in lower_attrs for k in ["coffee", "cup", "drink"]):
-        return "Hey, looks like you've got your coffee fuel for the day! While you're at it, check out our new arrivals."
+        pitch = "Hey, looks like you've got your coffee fuel for the day! While you're at it, check out our new arrivals."
     elif any(k in lower_attrs for k in ["sneakers", "athletic", "runner"]):
-        return "Hey there, love the athletic look—if you're out tracking steps today, you need to check out our newest ultralight gear."
+        pitch = "Hey there, love the athletic look—if you're out tracking steps today, you need to check out our newest ultralight gear."
     else:
-        return "Hey there! If you have a minute, I'd love to show you something that just arrived in store."
+        pitch = "Hey there! If you have a minute, I'd love to show you something that just arrived in store."
+
+    return (pitch + scarcity_suffix).strip()
 
 
 def chunk_text_stream(full_text: str) -> List[str]:
