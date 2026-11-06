@@ -62,6 +62,14 @@
 - [x] Add Contextual Weighting toggle switch and active indicators in `hub/templates/index.html`.
 - [x] Expand test suite with 3 comprehensive tests in `tests/test_ab_engine.py`.
 
-## Short-Term (1.5.0)
-- [ ] External CRM webhook dispatching (HubSpot, Salesforce, Zapier) for automated lead forwarding.
+## Completed in 1.5.0
+- [x] Implement asynchronous outbound CRM Webhook Relay engine (`hub/webhooks.py`) with HMAC-SHA256 signature verification.
+- [x] Wire non-blocking webhook dispatches into customer interaction creation and lead qualification lifecycle hooks.
+- [x] Add REST configuration endpoints (`GET /api/webhooks/config`, `POST /api/webhooks/config`, `POST /api/webhooks/test`) and form handler (`POST /update_webhooks`).
+- [x] Build External CRM Webhook Relay dashboard card in `hub/templates/index.html` with real-time test dispatch button.
+- [x] Write comprehensive test suite in `tests/test_webhooks.py` with 100% pass rate.
+- [x] Visual Playwright screenshot and UI verification.
+
+## Short-Term (1.6.0)
 - [ ] Multi-kiosk fleet synchronization via central Redis clustering or gRPC mesh.
+- [ ] Customer interaction replay and synthetic voice evaluation loop.

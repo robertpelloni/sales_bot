@@ -867,6 +867,55 @@
                     <button type="submit" style="width: 100%; margin-top: 8px; padding: 6px; font-size: 0.85em;">Update Hardware & Credentials</button>
                 </form>
 
+                <!-- CRM Webhook Forwarding & Integration -->
+                <div class="card-header" style="margin-top: 16px; margin-bottom: 8px;">
+                    <h2>🔗 External CRM Webhook Relay</h2>
+                    <span class="tooltip">ⓘ<span class="tooltiptext">Stream interaction logs and qualified lead captures to Salesforce, HubSpot, or Zapier with HMAC-SHA256 signatures.</span></span>
+                    <span class="badge {% if webhook_config.enabled %}badge-lead{% else %}badge-method{% endif %}" style="margin-left: auto;">
+                        {% if webhook_config.enabled %}RELAY: ACTIVE{% else %}RELAY: DISABLED{% endif %}
+                    </span>
+                </div>
+                <form method="post" action="/update_webhooks" style="background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid var(--border);">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+                        <label style="font-weight: 600; font-size: 0.85em; cursor: pointer; display: flex; align-items: center; gap: 6px; margin-bottom: 0;">
+                            <input type="checkbox" name="enabled" value="True" {% if webhook_config.enabled %}checked{% endif %}>
+                            Enable Outbound CRM Webhook Forwarding
+                        </label>
+                        <span style="font-size: 0.75em; color: var(--text-muted);">Async Non-Blocking</span>
+                    </div>
+                    <div class="split-2" style="margin-bottom: 8px;">
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label for="webhook_url" style="font-size: 0.8em;">Target Webhook URL
+                                <span class="tooltip">ⓘ<span class="tooltiptext">HTTPS destination endpoint for lead event JSON payloads.</span></span>
+                            </label>
+                            <input type="url" id="webhook_url" name="url" value="{{ webhook_config.url or '' }}" placeholder="https://api.crm.com/webhook/v1" style="padding: 5px 8px; font-size: 0.8em;">
+                        </div>
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label for="webhook_secret" style="font-size: 0.8em;">HMAC Secret Key (Optional)
+                                <span class="tooltip">ⓘ<span class="tooltiptext">Shared secret string for generating X-Sirens-Signature HMAC-SHA256 headers.</span></span>
+                            </label>
+                            <input type="text" id="webhook_secret" name="secret" value="{{ webhook_config.secret or '' }}" placeholder="Optional signature secret" style="padding: 5px 8px; font-size: 0.8em;">
+                        </div>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px; flex-wrap: wrap; gap: 8px;">
+                        <div style="display: flex; gap: 12px; font-size: 0.8em;">
+                            <label style="cursor: pointer; display: flex; align-items: center; gap: 4px;">
+                                <input type="checkbox" name="event_new_interaction" value="NEW_INTERACTION" {% if 'NEW_INTERACTION' in webhook_config.events %}checked{% endif %}>
+                                All Interactions
+                            </label>
+                            <label style="cursor: pointer; display: flex; align-items: center; gap: 4px;">
+                                <input type="checkbox" name="event_lead_qualified" value="LEAD_QUALIFIED" {% if 'LEAD_QUALIFIED' in webhook_config.events %}checked{% endif %}>
+                                Qualified Leads Only
+                            </label>
+                        </div>
+                        <div style="display: flex; gap: 6px;">
+                            <button type="button" class="btn-secondary" style="padding: 5px 10px; font-size: 0.8em;" onclick="testWebhookEndpoint()">Test Dispatch Ping</button>
+                            <button type="submit" class="btn-success" style="padding: 5px 12px; font-size: 0.8em;">Save Webhook Relay</button>
+                        </div>
+                    </div>
+                    <div id="webhook-test-result" style="display: none; font-size: 0.8em; margin-top: 8px; padding: 6px 10px; border-radius: 4px;"></div>
+                </form>
+
             </div>
 
         </main>
@@ -1018,6 +1067,32 @@
                     console.error("Error processing websocket message:", e);
                 }
             };
+        }
+
+        async function testWebhookEndpoint() {
+            const resDiv = document.getElementById('webhook-test-result');
+            resDiv.style.display = 'block';
+            resDiv.style.background = '#f1f5f9';
+            resDiv.style.color = '#334155';
+            resDiv.innerText = 'Dispatching test payload to webhook URL...';
+
+            try {
+                const response = await fetch('/api/webhooks/test', { method: 'POST' });
+                const data = await response.json();
+                if (response.ok) {
+                    resDiv.style.background = '#dcfce7';
+                    resDiv.style.color = '#166534';
+                    resDiv.innerText = '✓ Success: ' + data.message;
+                } else {
+                    resDiv.style.background = '#fee2e2';
+                    resDiv.style.color = '#991b1b';
+                    resDiv.innerText = '✕ Delivery Error: ' + (data.detail || 'Failed to dispatch');
+                }
+            } catch (err) {
+                resDiv.style.background = '#fee2e2';
+                resDiv.style.color = '#991b1b';
+                resDiv.innerText = '✕ Request Failed: ' + err.message;
+            }
         }
 
         window.addEventListener('DOMContentLoaded', initWebSocket);

@@ -71,6 +71,12 @@
   - Dwell heuristics: extended dwell boosts Consultative Problem-Solver; fleeting glance boosts Pattern Interrupt.
   - Dashboard UI controls for toggling vision context affinity weighting.
 
-- Phase 15: Multi-Kiosk Fleet Synchronization & Distributed Mesh (Planned 1.5.0)
+- Phase 15: Outbound CRM Webhook Relay & Cryptographic Dispatch (Completed 1.5.0)
+  - Asynchronous background HTTP webhook dispatch engine (`WebhookManager`) connecting external enterprise CRMs (Salesforce, HubSpot, Zapier).
+  - HMAC-SHA256 signature verification (`X-Sirens-Signature`) with timestamp headers over payload bodies.
+  - Granular event filtering (`NEW_INTERACTION`, `LEAD_QUALIFIED`, `FEEDBACK_RECORDED`).
+  - Interactive dashboard configuration card with real-time test dispatch triggering.
+
+- Phase 16: Multi-Kiosk Fleet Synchronization & Distributed Mesh (Planned 1.6.0)
   - Distributed SQLite sync via Litestream or Raft-backed Redis cluster across multi-kiosk storefront networks.
   - Cross-kiosk customer trajectory handover with privacy-preserving appearance embeddings.

@@ -25,7 +25,7 @@ Configuration and administration endpoints are protected with HTTP Basic Authent
 {
   "status": "healthy",
   "service": "Project Sirens Hub",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "mock_vision": true,
   "camera_index": "0",
   "has_openai_key": false,
@@ -64,6 +64,45 @@ Configuration and administration endpoints are protected with HTTP Basic Authent
     "rating": 1,
     "follow_up": null
   }
+}
+```
+
+### 15. `GET /api/webhooks/config`
+- **Description**: Retrieves current outbound CRM webhook relay configuration (enabled status, destination URL, secret key presence, subscribed events).
+- **Response**:
+```json
+{
+  "enabled": true,
+  "url": "https://api.crm.example.com/v1/leads",
+  "secret_key": "sirens_sec_...",
+  "events": ["NEW_INTERACTION", "LEAD_QUALIFIED"],
+  "timeout_seconds": 5
+}
+```
+
+### 16. `POST /api/webhooks/config`
+- **Description**: Updates outbound CRM webhook destination, secret verification key, and subscribed events.
+- **Request Body**:
+```json
+{
+  "enabled": true,
+  "url": "https://hooks.zapier.com/hooks/catch/123/abc",
+  "secret_key": "custom_secret_key",
+  "events": ["LEAD_QUALIFIED"],
+  "timeout_seconds": 5
+}
+```
+
+### 17. `POST /api/webhooks/test`
+- **Description**: Dispatches a live test mock payload asynchronously to the configured webhook endpoint, generating an HMAC-SHA256 signature.
+- **Response**:
+```json
+{
+  "status": "dispatched",
+  "event": "TEST_PING",
+  "url": "https://api.crm.example.com/v1/leads",
+  "signature_header": "X-Sirens-Signature: sha256=...",
+  "message": "Test webhook payload dispatched asynchronously."
 }
 ```
 

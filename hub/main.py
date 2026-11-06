@@ -1,6 +1,7 @@
 import sys
 import os
 import json
+import datetime
 
 # Ensure project root is in sys.path so we can import src modules globally
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -20,6 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import func, Integer, select
 from .database import get_db, init_db, Interaction
 from .ab_engine import bandit_engine
+from .webhooks import webhook_manager
 
 
 class ConnectionManager:
@@ -95,20 +97,24 @@ async def log_interaction(interaction: InteractionCreate, db: AsyncSession = Dep
         await db.refresh(db_interaction)
 
         # Broadcast event to connected WebSocket dashboards
+        event_data = {
+            "id": db_interaction.id,
+            "timestamp": db_interaction.timestamp.strftime('%Y-%m-%d %H:%M'),
+            "attributes": db_interaction.attributes,
+            "response": db_interaction.response,
+            "sales_framework": db_interaction.sales_framework,
+            "tts_latency_ms": db_interaction.tts_latency_ms,
+            "is_lead": db_interaction.is_lead,
+            "follow_up_notes": db_interaction.follow_up_notes,
+            "feedback_score": db_interaction.feedback_score
+        }
         await ws_manager.broadcast({
             "event": "NEW_INTERACTION",
-            "data": {
-                "id": db_interaction.id,
-                "timestamp": db_interaction.timestamp.strftime('%Y-%m-%d %H:%M'),
-                "attributes": db_interaction.attributes,
-                "response": db_interaction.response,
-                "sales_framework": db_interaction.sales_framework,
-                "tts_latency_ms": db_interaction.tts_latency_ms,
-                "is_lead": db_interaction.is_lead,
-                "follow_up_notes": db_interaction.follow_up_notes,
-                "feedback_score": db_interaction.feedback_score
-            }
+            "data": event_data
         })
+
+        # Asynchronously dispatch outbound webhook
+        await webhook_manager.dispatch_event("NEW_INTERACTION", event_data)
 
         return {"status": "success", "id": db_interaction.id}
     except Exception as e:
@@ -208,6 +214,7 @@ async def read_root(request: Request, simulated_response: str = "", error_messag
             "default_method": bandit_engine.default_method,
             "contextual_weighting": bandit_engine.contextual_weighting
         },
+        "webhook_config": webhook_manager.config,
         "error_message": error_message
     })
 
@@ -452,6 +459,16 @@ async def mark_lead(request: Request, interaction_id: int, is_lead: bool = Form(
         if interaction:
             interaction.is_lead = is_lead
             await db.commit()
+            if is_lead:
+                await webhook_manager.dispatch_event("LEAD_QUALIFIED", {
+                    "id": interaction.id,
+                    "timestamp": interaction.timestamp.strftime('%Y-%m-%d %H:%M') if interaction.timestamp else "",
+                    "attributes": interaction.attributes,
+                    "response": interaction.response,
+                    "sales_framework": interaction.sales_framework,
+                    "follow_up_notes": interaction.follow_up_notes,
+                    "feedback_score": interaction.feedback_score
+                })
     except Exception as e:
         print(f"Error marking lead: {e}")
         return await read_root(request, error_message=f"Error marking lead: {e}", db=db)
@@ -807,6 +824,88 @@ async def get_analytics_summary(db: AsyncSession = Depends(get_db), username: st
         "avg_tts_latency_ms": round(float(avg_latency), 1),
         "avg_feedback_score": round(float(avg_feedback), 2)
     }
+
+
+class WebhookConfigUpdate(BaseModel):
+    enabled: bool
+    url: str
+    secret: Optional[str] = ""
+    events: Optional[List[str]] = ["NEW_INTERACTION", "LEAD_QUALIFIED"]
+    timeout_seconds: Optional[float] = 5.0
+
+
+@app.get("/api/webhooks/config")
+async def get_webhook_config(username: str = Depends(get_current_username)):
+    """Returns the current outbound webhook configuration."""
+    return {"status": "success", "config": webhook_manager.config}
+
+
+@app.post("/api/webhooks/config")
+async def update_webhook_config(config_in: WebhookConfigUpdate, username: str = Depends(get_current_username)):
+    """Updates outbound webhook settings and persists them to config/webhooks.json."""
+    webhook_manager.save_config({
+        "enabled": config_in.enabled,
+        "url": config_in.url,
+        "secret": config_in.secret or "",
+        "events": config_in.events or ["NEW_INTERACTION", "LEAD_QUALIFIED"],
+        "timeout_seconds": config_in.timeout_seconds or 5.0
+    })
+    return {"status": "success", "config": webhook_manager.config}
+
+
+@app.post("/api/webhooks/test")
+async def test_webhook_dispatch(username: str = Depends(get_current_username)):
+    """Dispatches a test mock payload to the configured webhook endpoint."""
+    if not webhook_manager.config.get("url"):
+        raise HTTPException(status_code=400, detail="Webhook URL is not configured.")
+
+    test_payload = {
+        "event": "TEST_PING",
+        "timestamp": datetime.datetime.now(datetime.UTC).isoformat(),
+        "data": {
+            "message": "Project Sirens test webhook dispatch",
+            "version": "1.5.0",
+            "hub_status": "operational"
+        }
+    }
+    success = await webhook_manager._send_http_request(test_payload)
+    if not success:
+        raise HTTPException(status_code=502, detail="Webhook test delivery failed or timed out.")
+    return {"status": "success", "message": "Test webhook payload delivered successfully."}
+
+
+@app.post("/update_webhooks")
+async def update_webhooks_form(
+    request: Request,
+    enabled: Optional[str] = Form(None),
+    url: str = Form(""),
+    secret: str = Form(""),
+    event_new_interaction: Optional[str] = Form(None),
+    event_lead_qualified: Optional[str] = Form(None),
+    timeout_seconds: float = Form(5.0),
+    db: AsyncSession = Depends(get_db),
+    username: str = Depends(get_current_username)
+):
+    """Handles HTML form submission for updating webhook integration settings."""
+    try:
+        events = []
+        if event_new_interaction:
+            events.append("NEW_INTERACTION")
+        if event_lead_qualified:
+            events.append("LEAD_QUALIFIED")
+
+        webhook_manager.save_config({
+            "enabled": enabled is not None,
+            "url": url.strip(),
+            "secret": secret.strip(),
+            "events": events,
+            "timeout_seconds": float(timeout_seconds)
+        })
+    except Exception as e:
+        print(f"Error updating webhook configuration: {e}")
+        return await read_root(request, error_message=f"Error updating webhooks: {e}", db=db)
+
+    return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
 
 
 @app.post("/api/server/shutdown")

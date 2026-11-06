@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## [1.5.0] - Outbound CRM Webhook Relay & Cryptographic Signature Dispatch
+- **Asynchronous Webhook Relay Engine (`hub/webhooks.py`)**: Implemented non-blocking background HTTP dispatch system (`WebhookManager`) integrating external CRMs and marketing automation platforms (Salesforce, HubSpot, Zapier).
+- **HMAC-SHA256 Cryptographic Verification**: Generates hexadecimal signatures (`X-Sirens-Signature: sha256=<digest>`) and timestamp headers (`X-Sirens-Timestamp`) over JSON payload bodies using configurable endpoint secret keys.
+- **Granular Event Filtering**: Supports subscribing to specific interaction lifecycle events (`all`, `NEW_INTERACTION`, `LEAD_QUALIFIED`, `FEEDBACK_RECORDED`).
+- **REST & UI Configuration Management**: Added `GET /api/webhooks/config`, `POST /api/webhooks/config`, `POST /api/webhooks/test` (live mock test dispatch), and `POST /update_webhooks` form handler.
+- **Automated Lifecycle Hooks**: Linked webhook dispatches into `log_interaction` (`NEW_INTERACTION`) and `mark_lead` (`LEAD_QUALIFIED`) in `hub/main.py`.
+- **External Webhook Dashboard Card (`hub/templates/index.html`)**: Added dedicated management card with active/disabled badges, endpoint URL input, secret key field, event checkboxes, and interactive JavaScript ping test button.
+- **Webhook Test Suite (`tests/test_webhooks.py`)**: Authored comprehensive unit and integration tests verifying HMAC generation, event filtering, async background execution, API schemas, and form handlers.
+
 ## [1.4.0] - Contextual Multi-Armed Bandit Scoring & Sensory Vision Integration
 - **Contextual Arm Affinity Engine (`hub/ab_engine.py`)**: Implemented `calculate_context_affinity` and `select_contextual` dynamically weighting framework arms according to customer proximity distance and dwell time.
 - **Sensory Affinity Heuristics**: Close proximity (≤1.2m) boosts Assumptive Close and Challenger frameworks; Far distance (>2.5m) boosts Pattern Interrupt Cold-Open; Extended dwell (≥10s) boosts Consultative Problem-Solver.

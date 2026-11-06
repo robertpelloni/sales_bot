@@ -62,3 +62,13 @@ Every customer interaction is streamed and persisted in `sirens.db`:
   - Add or delete **Tactics Enforced** (e.g. *"Use assumptive close formatting"*).
   - Add or delete **Privacy & Behavioral Constraints** (e.g. *"Never mention brand names"*).
 - **Hardware Connection**: Update `OPENAI_API_KEY`, Camera index, and toggle between Mock and Live Vision modes.
+
+---
+
+## 6. External CRM Webhook Relay (Salesforce, HubSpot, Zapier)
+Project Sirens automatically forwards real-time retail events to enterprise CRMs and marketing automation platforms without stalling the edge pipeline:
+- **Enable Webhook Forwarding**: Toggle the active status switch in the External CRM Webhook Relay card.
+- **Webhook Destination URL**: Provide an HTTPS endpoint (e.g., Salesforce/HubSpot ingest hook or Zapier trigger).
+- **HMAC Secret Key**: Specify a secret signing key. Each dispatched HTTP request includes an `X-Sirens-Signature: sha256=<hex_digest>` header computed over the JSON payload for cryptographic verification.
+- **Event Filtering**: Check which lifecycle events should trigger dispatches (`New Interactions`, `Qualified Leads Flagged`, `Staff Feedback Recorded`).
+- **Send Test Ping**: Click the test ping button to immediately fire an asynchronous mock test payload and verify external connectivity and signature validation.
