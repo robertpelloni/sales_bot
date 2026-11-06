@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## [1.3.0] - Multi-Armed Bandit Algorithmic Refinement & Dynamic Routing
+- **Multi-Algorithm Optimization Engine (`hub/ab_engine.py`)**: Expanded Multi-Armed Bandit capabilities beyond Thompson Sampling to include Upper Confidence Bound (UCB1) and Epsilon-Greedy with geometric exploration decay.
+- **Exploration Decay & Floor (`decay_epsilon`)**: Automatically decays exploration epsilon ($\epsilon \cdot \text{decay\_rate}$) down to a configurable minimum boundary ($\text{min\_\epsilon}$).
+- **95% Confidence Interval Tracking**: Wilson score / normal approximation confidence bounds (`ci_lower`, `ci_upper`) computed and displayed alongside empirical win rates.
+- **Bandit Configuration & Reset Endpoints (`hub/main.py`)**: Added `POST /api/ab/config` and `POST /api/ab/reset` for runtime algorithmic hyperparameter tuning.
+- **Dynamic Simulation Framework Routing**: Integrated bandit allocation directly into `/simulate_detection` with an "auto" framework selection toggle.
+- **Dashboard Bandit Controls (`hub/templates/index.html`)**: Interactive form controls for tuning algorithm strategy, exploration rate, decay parameters, and instant learning state reset.
+
 ## [1.2.0] - CRM Leads CSV Export & Real-Time Analytics Reporting
 - **Streaming CRM CSV Export (`hub/main.py`)**: Implemented `GET /api/leads/export` supporting RFC 4180 streaming CSV downloads with headers, sanitization, and optional query filtering (`all=true` for full logs or default qualified leads).
 - **Aggregated Analytics Summary API (`hub/main.py`)**: Added `GET /api/analytics/summary` computing real-time metrics including total interactions, qualified leads count, conversion percentage, average TTS audio latency, and average pitch feedback score.

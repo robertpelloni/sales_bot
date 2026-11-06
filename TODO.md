@@ -47,9 +47,16 @@
 - [x] Wire CSV export buttons (`Export Leads (CSV)`, `All Logs`) into dashboard Live CRM Feed & Analytics header.
 - [x] Add test suite (`tests/test_leads_export.py`) and visual Playwright UI verification.
 
-## Short-Term (1.3.0)
+## Completed in 1.3.0
+- [x] Implement multi-algorithm bandit optimization with Upper Confidence Bound (UCB1) and Epsilon-Greedy with geometric decay in `hub/ab_engine.py`.
+- [x] Compute and display 95% Wilson confidence intervals across all candidate sales framework arms.
+- [x] Expose REST endpoints `POST /api/ab/config` and `POST /api/ab/reset` for runtime hyperparameter tuning.
+- [x] Connect bandit algorithm selection controls and state reset triggers to dashboard UI.
+- [x] Enable autonomous dynamic framework routing in simulated detections (`hub/main.py`).
+
+## Short-Term (1.4.0)
 - [ ] Multi-armed bandit reward convergence on customer dwell time alongside explicit lead conversion.
 - [ ] External CRM webhook dispatching (HubSpot, Salesforce, Zapier) for automated lead forwarding.
 
-## Long-Term (1.4.0+)
+## Long-Term (1.5.0+)
 - [ ] Multi-kiosk fleet synchronization via central Redis clustering or gRPC mesh.

@@ -9,7 +9,7 @@ from contextlib import asynccontextmanager
 import signal
 import io
 import csv
-from typing import List
+from typing import List, Optional
 from fastapi import FastAPI, Request, Form, Depends, HTTPException, status, WebSocket, WebSocketDisconnect, Response
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
@@ -201,6 +201,12 @@ async def read_root(request: Request, simulated_response: str = "", error_messag
         "simulated_response": simulated_response,
         "interactions": interactions,
         "bandit_stats": bandit_stats,
+        "bandit_config": {
+            "epsilon": bandit_engine.epsilon,
+            "decay_rate": bandit_engine.decay_rate,
+            "min_epsilon": bandit_engine.min_epsilon,
+            "default_method": bandit_engine.default_method
+        },
         "error_message": error_message
     })
 
@@ -503,9 +509,21 @@ async def simulate_detection(
     proximity: str = Form("1.0m (close)"),
     distance_m: float = Form(1.0),
     dwell_time_s: float = Form(1.8),
+    framework_selection: str = Form("auto"),
     db: AsyncSession = Depends(get_db), username: str = Depends(get_current_username)
 ):
     from src.llm_client import process_vlm_stream
+
+    # Dynamically resolve framework if requested or defaulted to auto bandit allocation
+    effective_framework = None
+    if framework_selection == "auto":
+        try:
+            chosen_fw, _ = await bandit_engine.allocate_next_framework(db)
+            effective_framework = chosen_fw
+        except Exception as e:
+            print(f"Error during bandit framework allocation: {e}")
+    elif framework_selection.strip():
+        effective_framework = framework_selection.strip()
 
     attrs_list = [attr.strip() for attr in attributes.split(",")]
     mock_packet = {
@@ -514,6 +532,7 @@ async def simulate_detection(
         "distance_m": distance_m,
         "dwell_time_s": dwell_time_s,
         "attributes": attrs_list,
+        "sales_framework": effective_framework,
         "frame_data": "",
         "system_prompt_override": system_prompt_override.strip(),
         "temperature": temperature
@@ -582,21 +601,113 @@ async def get_server_status(username: str = Depends(get_current_username)):
 
 @app.get("/api/ab/allocations")
 async def get_ab_allocations(db: AsyncSession = Depends(get_db), username: str = Depends(get_current_username)):
-    """Returns the multi-armed bandit framework performance, empirical win rates, and Bayesian priors."""
+    """Returns the multi-armed bandit framework performance, empirical win rates, confidence intervals, and Bayesian priors."""
     stats = await bandit_engine.get_framework_performance(db)
-    return {"status": "success", "allocations": stats}
+    return {
+        "status": "success",
+        "allocations": stats,
+        "config": {
+            "epsilon": bandit_engine.epsilon,
+            "decay_rate": bandit_engine.decay_rate,
+            "min_epsilon": bandit_engine.min_epsilon,
+            "default_method": bandit_engine.default_method
+        }
+    }
 
 
 @app.post("/api/ab/select_framework")
-async def select_ab_framework(method: str = "thompson", db: AsyncSession = Depends(get_db), username: str = Depends(get_current_username)):
+async def select_ab_framework(method: Optional[str] = None, db: AsyncSession = Depends(get_db), username: str = Depends(get_current_username)):
     """Dynamically samples the optimal sales framework for an incoming customer interaction."""
     chosen_framework, stats = await bandit_engine.allocate_next_framework(db, method=method)
     return {
         "status": "success",
         "selected_framework": chosen_framework,
-        "method": method,
+        "method": method or bandit_engine.default_method,
         "conversion_rate": stats.get(chosen_framework, {}).get("conversion_rate", 0.0)
     }
+
+
+class BanditConfigPayload(BaseModel):
+    epsilon: Optional[float] = None
+    decay_rate: Optional[float] = None
+    min_epsilon: Optional[float] = None
+    default_method: Optional[str] = None
+
+
+@app.post("/api/ab/config")
+async def configure_ab_bandit(
+    payload: BanditConfigPayload,
+    username: str = Depends(get_current_username)
+):
+    """Dynamically reconfigures multi-armed bandit algorithmic parameters."""
+    if payload.epsilon is not None:
+        bandit_engine.epsilon = max(0.0, min(1.0, float(payload.epsilon)))
+    if payload.decay_rate is not None:
+        bandit_engine.decay_rate = max(0.5, min(1.0, float(payload.decay_rate)))
+    if payload.min_epsilon is not None:
+        bandit_engine.min_epsilon = max(0.0, min(1.0, float(payload.min_epsilon)))
+    if payload.default_method is not None:
+        if payload.default_method in ["thompson", "epsilon_greedy", "ucb1"]:
+            bandit_engine.default_method = payload.default_method
+
+    return {
+        "status": "success",
+        "config": {
+            "epsilon": bandit_engine.epsilon,
+            "decay_rate": bandit_engine.decay_rate,
+            "min_epsilon": bandit_engine.min_epsilon,
+            "default_method": bandit_engine.default_method
+        }
+    }
+
+
+@app.post("/api/ab/reset")
+async def reset_ab_bandit(
+    epsilon: Optional[float] = None,
+    username: str = Depends(get_current_username)
+):
+    """Resets the bandit exploration state and parameters to initial defaults."""
+    bandit_engine.reset_parameters(epsilon=epsilon)
+    return {
+        "status": "success",
+        "message": "Multi-Armed Bandit parameters and prior overrides reset successfully",
+        "config": {
+            "epsilon": bandit_engine.epsilon,
+            "decay_rate": bandit_engine.decay_rate,
+            "min_epsilon": bandit_engine.min_epsilon,
+            "default_method": bandit_engine.default_method
+        }
+    }
+
+
+@app.post("/update_ab_config")
+async def update_ab_config_form(
+    request: Request,
+    epsilon: float = Form(0.20),
+    decay_rate: float = Form(0.99),
+    min_epsilon: float = Form(0.05),
+    default_method: str = Form("thompson"),
+    db: AsyncSession = Depends(get_db),
+    username: str = Depends(get_current_username)
+):
+    """UI form endpoint to update bandit algorithm hyperparameters."""
+    bandit_engine.epsilon = max(0.0, min(1.0, float(epsilon)))
+    bandit_engine.decay_rate = max(0.5, min(1.0, float(decay_rate)))
+    bandit_engine.min_epsilon = max(0.0, min(1.0, float(min_epsilon)))
+    if default_method in ["thompson", "epsilon_greedy", "ucb1"]:
+        bandit_engine.default_method = default_method
+    return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@app.post("/reset_ab_bandit")
+async def reset_ab_bandit_form(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    username: str = Depends(get_current_username)
+):
+    """UI form endpoint to reset bandit parameters."""
+    bandit_engine.reset_parameters()
+    return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
 
 
 @app.get("/api/leads/export")

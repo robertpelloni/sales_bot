@@ -59,6 +59,12 @@
   - Aggregated analytics summary endpoint (`GET /api/analytics/summary`) providing conversion rates and averages.
   - Header export action triggers directly embedded in the consolidated Live CRM Feed card.
 
-- Phase 13: Multi-Kiosk Fleet Synchronization & Distributed Mesh (Planned 1.3.0)
+- Phase 13: Multi-Armed Bandit Algorithmic Refinement & Dynamic Routing (Completed 1.3.0)
+  - Advanced bandit algorithms: Upper Confidence Bound (UCB1) and Epsilon-Greedy with geometric exploration decay.
+  - 95% Wilson confidence intervals tracking empirical conversion rates.
+  - Algorithmic hyperparameter configuration (`POST /api/ab/config`) and prior state reset (`POST /api/ab/reset`).
+  - Simulation dynamic framework auto-allocation routing.
+
+- Phase 14: Multi-Kiosk Fleet Synchronization & Distributed Mesh (Planned 1.4.0)
   - Distributed SQLite sync via Litestream or Raft-backed Redis cluster across multi-kiosk storefront networks.
   - Cross-kiosk customer trajectory handover with privacy-preserving appearance embeddings.

@@ -1,7 +1,24 @@
-# HANDOFF - Project Sirens (v1.2.0)
+# HANDOFF - Project Sirens (v1.3.0)
 
 ## Session Summary & Overview
-In this session, Project Sirens was upgraded across versions **0.7.0**, **0.8.0**, **0.9.0**, **1.0.0**, **1.1.0**, and **1.2.0**, establishing an enterprise-grade autonomous retail sales bot combining Coral Edge TPU acceleration, real-time WebSocket live CRM feeds, multimodal Frontier VLM pitch synthesis, Bayesian Multi-Armed Bandit dynamic strategy allocation, an interactive dynamic store promotions engine, and streaming CRM lead export with real-time analytics aggregation.
+In this session, Project Sirens was upgraded across versions **0.7.0**, **0.8.0**, **0.9.0**, **1.0.0**, **1.1.0**, **1.2.0**, and **1.3.0**, establishing an enterprise-grade autonomous retail sales bot combining Coral Edge TPU acceleration, real-time WebSocket live CRM feeds, multimodal Frontier VLM pitch synthesis, advanced Multi-Armed Bandit dynamic strategy allocation (Thompson Sampling, UCB1, Epsilon-Greedy with decay), an interactive dynamic store promotions engine, and streaming CRM lead export with real-time analytics aggregation.
+
+## What Was Accomplished in v1.3.0 (Multi-Armed Bandit Algorithmic Refinement & Dynamic Routing)
+1. **Multi-Algorithm Optimization Engine (`hub/ab_engine.py`)**:
+   - Expanded Multi-Armed Bandit capabilities beyond Thompson Sampling to include Upper Confidence Bound (UCB1) and Epsilon-Greedy with geometric exploration decay.
+   - Implemented `decay_epsilon()` ensuring exploration probability smoothly decreases towards a configurable floor `min_epsilon`.
+   - Added `select_ucb1()` with zero-trial initialization guarantees and logarithmic exploration bonuses.
+   - Added 95% Wilson confidence intervals (`ci_lower`, `ci_upper`) per arm.
+2. **Bandit Configuration & Reset Endpoints (`hub/main.py`)**:
+   - Implemented `POST /api/ab/config` and `POST /api/ab/reset` for runtime algorithmic tuning.
+   - Exposed UI form endpoints `/update_ab_config` and `/reset_ab_bandit`.
+   - Wired bandit auto-allocation directly into cold-open simulation (`/simulate_detection`).
+3. **Consolidated Dashboard Bandit Tuning UI (`hub/templates/index.html`)**:
+   - Added bandit hyperparameter tuning panel to the Automated A/B Sales Framework Optimization card with strategy selector, epsilon input, decay/min floor, and reset buttons.
+   - Rendered 95% confidence intervals next to win rates.
+4. **Automated Testing & Visual Verification**:
+   - Added unit and API tests in `tests/test_ab_engine.py`.
+   - 36 passing unit and integration tests across the test suite.
 
 ## What Was Accomplished in v1.2.0 (CRM Leads CSV Export & Real-Time Analytics Reporting)
 1. **Streaming CRM CSV Export API (`hub/main.py`)**:

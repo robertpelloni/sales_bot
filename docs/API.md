@@ -166,3 +166,43 @@ Configuration and administration endpoints are protected with HTTP Basic Authent
   "avg_feedback_score": 4.2
 }
 ```
+
+### 13. `POST /api/ab/config`
+- **Description**: Dynamically configures hyperparameters for the Multi-Armed Bandit optimization engine.
+- **Payload**:
+```json
+{
+  "epsilon": 0.20,
+  "decay_rate": 0.99,
+  "min_epsilon": 0.05,
+  "default_method": "thompson"
+}
+```
+- **Response**:
+```json
+{
+  "status": "success",
+  "config": {
+    "epsilon": 0.20,
+    "decay_rate": 0.99,
+    "min_epsilon": 0.05,
+    "default_method": "thompson"
+  }
+}
+```
+
+### 14. `POST /api/ab/reset`
+- **Description**: Resets the bandit's exploration epsilon and clears in-memory prior overrides to initial values.
+- **Response**:
+```json
+{
+  "status": "success",
+  "message": "Multi-Armed Bandit parameters and prior overrides reset successfully",
+  "config": {
+    "epsilon": 0.20,
+    "decay_rate": 0.99,
+    "min_epsilon": 0.05,
+    "default_method": "thompson"
+  }
+}
+```
