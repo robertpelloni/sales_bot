@@ -375,7 +375,7 @@
             <div class="system-status-group">
                 <div class="status-pill">
                     <span class="status-dot"></span>
-                    <span>Hub v1.3.0 Online</span>
+                    <span>Hub v1.4.0 Online</span>
                     <span class="tooltip">ⓘ<span class="tooltiptext">FastAPI asynchronous control server running on port 8000.</span></span>
                 </div>
                 <div class="status-pill" id="ws-pill">
@@ -715,8 +715,13 @@
                 <!-- Bandit Hyperparameters Tuning Form -->
                 <div style="background: #f1f5f9; border-radius: 8px; padding: 12px; margin-bottom: 16px; border: 1px solid #e2e8f0;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                        <strong style="font-size: 0.85em; color: #334155;">⚙️ Bandit Algorithmic Tuning</strong>
-                        <span class="badge" style="background: #e0f2fe; color: #0284c7; font-size: 0.75em;">Active: {{ bandit_config.default_method|upper }}</span>
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <strong style="font-size: 0.85em; color: #334155;">⚙️ Bandit Algorithmic Tuning</strong>
+                            <span class="badge" style="background: #e0f2fe; color: #0284c7; font-size: 0.75em;">Active: {{ bandit_config.default_method|upper }}</span>
+                        </div>
+                        <span class="badge" style="background: {% if bandit_config.contextual_weighting %}#dcfce7; color: #15803d{% else %}#f1f5f9; color: #64748b{% endif %}; font-size: 0.75em;">
+                            Contextual: {% if bandit_config.contextual_weighting %}ENABLED{% else %}DISABLED{% endif %}
+                        </span>
                     </div>
                     <form method="post" action="/update_ab_config">
                         <div class="split-3" style="margin-bottom: 8px;">
@@ -745,6 +750,13 @@
                                     <input type="number" id="min_epsilon" name="min_epsilon" step="0.01" min="0.0" max="0.5" value="{{ '%.2f'|format(bandit_config.min_epsilon) }}" style="font-size: 0.85em; padding: 6px;" title="Min Epsilon">
                                 </div>
                             </div>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <label style="font-size: 0.78em; color: var(--text-main); display: inline-flex; align-items: center; gap: 6px; margin: 0; cursor: pointer;">
+                                <input type="checkbox" name="contextual_weighting" value="on" {% if bandit_config.contextual_weighting %}checked{% endif %} style="width: auto;">
+                                <span>Enable Vision Context Affinity Weighting (Dwell Time & Proximity Distance)</span>
+                                <span class="tooltip">ⓘ<span class="tooltiptext">When enabled, Multi-Armed Bandit weights arms according to physical customer zone and dwell cues (e.g. boosts Pattern Interrupt for approaching far shoppers; Consultative for extended dwell).</span></span>
+                            </label>
                         </div>
                         <div style="display: flex; gap: 8px;">
                             <button type="submit" style="flex-grow: 1; font-size: 0.8em; padding: 6px; background-color: #4f46e5; color: white;">Save Bandit Config</button>

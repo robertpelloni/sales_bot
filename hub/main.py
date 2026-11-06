@@ -205,7 +205,8 @@ async def read_root(request: Request, simulated_response: str = "", error_messag
             "epsilon": bandit_engine.epsilon,
             "decay_rate": bandit_engine.decay_rate,
             "min_epsilon": bandit_engine.min_epsilon,
-            "default_method": bandit_engine.default_method
+            "default_method": bandit_engine.default_method,
+            "contextual_weighting": bandit_engine.contextual_weighting
         },
         "error_message": error_message
     })
@@ -518,7 +519,11 @@ async def simulate_detection(
     effective_framework = None
     if framework_selection == "auto":
         try:
-            chosen_fw, _ = await bandit_engine.allocate_next_framework(db)
+            chosen_fw, _ = await bandit_engine.allocate_next_framework(
+                db,
+                dwell_time=dwell_time_s,
+                distance_m=distance_m
+            )
             effective_framework = chosen_fw
         except Exception as e:
             print(f"Error during bandit framework allocation: {e}")
@@ -610,20 +615,34 @@ async def get_ab_allocations(db: AsyncSession = Depends(get_db), username: str =
             "epsilon": bandit_engine.epsilon,
             "decay_rate": bandit_engine.decay_rate,
             "min_epsilon": bandit_engine.min_epsilon,
-            "default_method": bandit_engine.default_method
+            "default_method": bandit_engine.default_method,
+            "contextual_weighting": bandit_engine.contextual_weighting
         }
     }
 
 
 @app.post("/api/ab/select_framework")
-async def select_ab_framework(method: Optional[str] = None, db: AsyncSession = Depends(get_db), username: str = Depends(get_current_username)):
-    """Dynamically samples the optimal sales framework for an incoming customer interaction."""
-    chosen_framework, stats = await bandit_engine.allocate_next_framework(db, method=method)
+async def select_ab_framework(
+    method: Optional[str] = None,
+    dwell_time_s: Optional[float] = None,
+    distance_m: Optional[float] = None,
+    db: AsyncSession = Depends(get_db),
+    username: str = Depends(get_current_username)
+):
+    """Dynamically samples the optimal sales framework for an incoming customer interaction, supporting vision context."""
+    chosen_framework, stats = await bandit_engine.allocate_next_framework(
+        db,
+        method=method,
+        dwell_time=dwell_time_s,
+        distance_m=distance_m
+    )
+    chosen_stats = stats.get(chosen_framework, {})
     return {
         "status": "success",
         "selected_framework": chosen_framework,
         "method": method or bandit_engine.default_method,
-        "conversion_rate": stats.get(chosen_framework, {}).get("conversion_rate", 0.0)
+        "conversion_rate": chosen_stats.get("conversion_rate", 0.0),
+        "context_affinity": chosen_stats.get("context_affinity", 1.0)
     }
 
 
@@ -632,6 +651,7 @@ class BanditConfigPayload(BaseModel):
     decay_rate: Optional[float] = None
     min_epsilon: Optional[float] = None
     default_method: Optional[str] = None
+    contextual_weighting: Optional[bool] = None
 
 
 @app.post("/api/ab/config")
@@ -649,6 +669,8 @@ async def configure_ab_bandit(
     if payload.default_method is not None:
         if payload.default_method in ["thompson", "epsilon_greedy", "ucb1"]:
             bandit_engine.default_method = payload.default_method
+    if payload.contextual_weighting is not None:
+        bandit_engine.contextual_weighting = bool(payload.contextual_weighting)
 
     return {
         "status": "success",
@@ -656,7 +678,8 @@ async def configure_ab_bandit(
             "epsilon": bandit_engine.epsilon,
             "decay_rate": bandit_engine.decay_rate,
             "min_epsilon": bandit_engine.min_epsilon,
-            "default_method": bandit_engine.default_method
+            "default_method": bandit_engine.default_method,
+            "contextual_weighting": bandit_engine.contextual_weighting
         }
     }
 
@@ -687,6 +710,7 @@ async def update_ab_config_form(
     decay_rate: float = Form(0.99),
     min_epsilon: float = Form(0.05),
     default_method: str = Form("thompson"),
+    contextual_weighting: Optional[str] = Form(None),
     db: AsyncSession = Depends(get_db),
     username: str = Depends(get_current_username)
 ):
@@ -694,6 +718,7 @@ async def update_ab_config_form(
     bandit_engine.epsilon = max(0.0, min(1.0, float(epsilon)))
     bandit_engine.decay_rate = max(0.5, min(1.0, float(decay_rate)))
     bandit_engine.min_epsilon = max(0.0, min(1.0, float(min_epsilon)))
+    bandit_engine.contextual_weighting = (contextual_weighting == "on" or contextual_weighting == "true")
     if default_method in ["thompson", "epsilon_greedy", "ucb1"]:
         bandit_engine.default_method = default_method
     return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)

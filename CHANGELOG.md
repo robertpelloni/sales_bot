@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## [1.4.0] - Contextual Multi-Armed Bandit Scoring & Sensory Vision Integration
+- **Contextual Arm Affinity Engine (`hub/ab_engine.py`)**: Implemented `calculate_context_affinity` and `select_contextual` dynamically weighting framework arms according to customer proximity distance and dwell time.
+- **Sensory Affinity Heuristics**: Close proximity (≤1.2m) boosts Assumptive Close and Challenger frameworks; Far distance (>2.5m) boosts Pattern Interrupt Cold-Open; Extended dwell (≥10s) boosts Consultative Problem-Solver.
+- **Context-Aware API Endpoints (`hub/main.py`)**: Updated `POST /api/ab/select_framework` to accept `dwell_time_s` and `distance_m` query parameters, returning the contextual affinity multiplier alongside chosen strategy and conversion rate.
+- **Dynamic Simulation Integration**: Cold-open pitch simulation (`POST /simulate_detection`) evaluates real-time contextual bandit allocation when set to `auto` routing.
+- **Contextual Tuning UI Controls (`hub/templates/index.html`)**: Added Contextual Weighting toggle switch and active status badge within the Bandit Algorithmic Tuning card.
+
 ## [1.3.0] - Multi-Armed Bandit Algorithmic Refinement & Dynamic Routing
 - **Multi-Algorithm Optimization Engine (`hub/ab_engine.py`)**: Expanded Multi-Armed Bandit capabilities beyond Thompson Sampling to include Upper Confidence Bound (UCB1) and Epsilon-Greedy with geometric exploration decay.
 - **Exploration Decay & Floor (`decay_epsilon`)**: Automatically decays exploration epsilon ($\epsilon \cdot \text{decay\_rate}$) down to a configurable minimum boundary ($\text{min\_\epsilon}$).

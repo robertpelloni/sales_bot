@@ -25,7 +25,7 @@ Configuration and administration endpoints are protected with HTTP Basic Authent
 {
   "status": "healthy",
   "service": "Project Sirens Hub",
-  "version": "1.2.0",
+  "version": "1.4.0",
   "mock_vision": true,
   "camera_index": "0",
   "has_openai_key": false,
@@ -137,15 +137,19 @@ Configuration and administration endpoints are protected with HTTP Basic Authent
 ```
 
 ### 10. `POST /api/ab/select_framework`
-- **Description**: Dynamically requests the bandit algorithm to allocate a sales framework for an incoming customer interaction.
-- **Query Parameter**: `method` (`thompson` or `epsilon_greedy`, default: `thompson`).
+- **Description**: Dynamically requests the bandit algorithm to allocate a sales framework for an incoming customer interaction, supporting vision context (dwell time and proximity distance).
+- **Query Parameters**:
+  - `method`: `thompson`, `epsilon_greedy`, or `ucb1`.
+  - `dwell_time_s`: (Optional) Customer dwell time in seconds.
+  - `distance_m`: (Optional) Calibrated spatial distance in meters.
 - **Response**:
 ```json
 {
-  "framework": "Challenger Sales Framework",
+  "status": "success",
+  "selected_framework": "Consultative Problem-Solver",
   "method": "thompson",
-  "trials": 15,
-  "win_rate": 0.4
+  "conversion_rate": 35.0,
+  "context_affinity": 1.5
 }
 ```
 
@@ -175,7 +179,8 @@ Configuration and administration endpoints are protected with HTTP Basic Authent
   "epsilon": 0.20,
   "decay_rate": 0.99,
   "min_epsilon": 0.05,
-  "default_method": "thompson"
+  "default_method": "thompson",
+  "contextual_weighting": true
 }
 ```
 - **Response**:

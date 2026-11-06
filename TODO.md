@@ -54,9 +54,14 @@
 - [x] Connect bandit algorithm selection controls and state reset triggers to dashboard UI.
 - [x] Enable autonomous dynamic framework routing in simulated detections (`hub/main.py`).
 
-## Short-Term (1.4.0)
-- [ ] Multi-armed bandit reward convergence on customer dwell time alongside explicit lead conversion.
-- [ ] External CRM webhook dispatching (HubSpot, Salesforce, Zapier) for automated lead forwarding.
+## Completed in 1.4.0
+- [x] Implement Contextual Multi-Armed Bandit arm selection in `hub/ab_engine.py` (`calculate_context_affinity`, `select_contextual`).
+- [x] Wire vision sensory attributes (proximity distance and dwell time) into framework affinity heuristics.
+- [x] Update REST API `/api/ab/select_framework` to accept contextual parameters and return affinity metrics.
+- [x] Wire contextual bandit allocation into simulated detections (`/simulate_detection`).
+- [x] Add Contextual Weighting toggle switch and active indicators in `hub/templates/index.html`.
+- [x] Expand test suite with 3 comprehensive tests in `tests/test_ab_engine.py`.
 
-## Long-Term (1.5.0+)
+## Short-Term (1.5.0)
+- [ ] External CRM webhook dispatching (HubSpot, Salesforce, Zapier) for automated lead forwarding.
 - [ ] Multi-kiosk fleet synchronization via central Redis clustering or gRPC mesh.

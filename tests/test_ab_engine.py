@@ -106,3 +106,61 @@ async def test_ab_config_and_reset_endpoints():
         reset_res = await ac.post("/api/ab/reset")
         assert reset_res.status_code == 200
         assert reset_res.json()["status"] == "success"
+
+
+def test_calculate_context_affinity():
+    engine = MultiArmedBanditEngine()
+
+    # Close distance (1.0m) boosts Assumptive Close Narrative and reduces Pattern Interrupt
+    close_assumptive = engine.calculate_context_affinity("Assumptive Close Narrative", dwell_time=2.0, distance_m=1.0)
+    close_pattern = engine.calculate_context_affinity("Pattern Interrupt Cold-Open", dwell_time=5.0, distance_m=1.0)
+    assert close_assumptive > 1.0
+    assert close_pattern < 1.0
+
+    # Far distance (>2.5m) boosts Pattern Interrupt Cold-Open
+    far_pattern = engine.calculate_context_affinity("Pattern Interrupt Cold-Open", dwell_time=2.0, distance_m=3.5)
+    assert far_pattern >= 1.5
+
+    # High dwell time (15s) boosts Consultative Problem-Solver
+    long_dwell_consultative = engine.calculate_context_affinity("Consultative Problem-Solver", dwell_time=15.0, distance_m=1.5)
+    assert long_dwell_consultative >= 1.5
+
+
+def test_select_contextual_weighting():
+    engine = MultiArmedBanditEngine(contextual_weighting=True)
+    stats = {
+        "Assumptive Close Narrative": {"alpha": 10.0, "beta": 10.0, "conversion_rate": 50.0, "trials": 20},
+        "Pattern Interrupt Cold-Open": {"alpha": 10.0, "beta": 10.0, "conversion_rate": 50.0, "trials": 20},
+        "Consultative Problem-Solver": {"alpha": 10.0, "beta": 10.0, "conversion_rate": 50.0, "trials": 20},
+        "Challenger Sales Framework": {"alpha": 10.0, "beta": 10.0, "conversion_rate": 50.0, "trials": 20}
+    }
+
+    # Approaching customer far away (distance 3.5m, low dwell 1.0s) should strongly favor Pattern Interrupt
+    chosen_far, affinities_far = engine.select_contextual(stats, dwell_time=1.0, distance_m=3.5, base_method="ucb1")
+    assert chosen_far == "Pattern Interrupt Cold-Open"
+    assert affinities_far["Pattern Interrupt Cold-Open"] > 1.5
+
+    # Customer dwelling close for 15s should favor Consultative Problem-Solver
+    chosen_close, affinities_close = engine.select_contextual(stats, dwell_time=15.0, distance_m=1.8, base_method="ucb1")
+    assert chosen_close == "Consultative Problem-Solver"
+    assert affinities_close["Consultative Problem-Solver"] >= 1.5
+
+
+@pytest.mark.asyncio
+async def test_api_contextual_ab_selection():
+    from httpx import AsyncClient, ASGITransport
+    import base64
+    from hub.main import app
+
+    auth_str = "admin:password"
+    b64_auth = base64.b64encode(auth_str.encode()).decode()
+    headers = {"Authorization": f"Basic {b64_auth}"}
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test", headers=headers) as ac:
+        res = await ac.post("/api/ab/select_framework?dwell_time_s=16.0&distance_m=1.1")
+        assert res.status_code == 200
+        data = res.json()
+        assert data["status"] == "success"
+        assert "selected_framework" in data
+        assert "context_affinity" in data
+        assert data["context_affinity"] > 0.0

@@ -48,6 +48,10 @@ Every customer interaction is streamed and persisted in `sirens.db`:
 - **Follow-up Notes**: Add staff notes directly to customer interaction cards.
 - **Exporting CRM Leads & Logs (CSV)**: Click **Export Leads (CSV)** to stream and download all flagged qualified leads directly into an RFC 4180 CSV spreadsheet. To export every customer interaction log regardless of lead qualification, click **All Logs**.
 - **Automated A/B Sales Framework Optimization**: Inspect live empirical win rates, Beta prior parameters ($\alpha, \beta$), and 95% confidence intervals per sales framework. Tune algorithm routing strategies (Thompson Sampling, Upper Confidence Bound UCB1, or Epsilon-Greedy with geometric decay) and exploration parameters directly from the dashboard card.
+- **Contextual Vision Affinity Routing**: Enable contextual weighting in the Bandit Algorithmic Tuning panel. When enabled, the Multi-Armed Bandit dynamically biases framework selection based on optical vision tracking:
+  - *Close Proximity (≤1.2m)*: Biases toward Assumptive Close Narrative and Challenger Sales Framework.
+  - *Far Distance (>2.5m)*: Biases toward Pattern Interrupt Cold-Open to turn passing pedestrian heads.
+  - *High Dwell (≥10s)*: Biases toward Consultative Problem-Solver for customers actively browsing.
 
 ---
 
