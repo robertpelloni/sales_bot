@@ -194,6 +194,7 @@ async def start_vision_loop(redis_url: str):
             if obj_id not in tracked_objects:
                 tracked_objects[obj_id] = {"first_seen": current_time, "triggered": False}
 
+            dwell_duration = round(current_time - tracked_objects[obj_id]["first_seen"], 2)
             if is_target_dwelling(tracked_objects[obj_id]["first_seen"], current_time, 1.5):
                 if not tracked_objects[obj_id].get("triggered", False):
                     import numpy as np
@@ -214,6 +215,7 @@ async def start_vision_loop(redis_url: str):
                         "id": obj_id,
                         "proximity": prox_desc,
                         "distance_m": dist,
+                        "dwell_time_s": dwell_duration,
                         "attributes": attrs,
                         "frame_data": encoded_frame,
                     }
@@ -260,6 +262,7 @@ async def start_vision_loop(redis_url: str):
                     if obj_id not in tracked_objects:
                         tracked_objects[obj_id] = {"first_seen": current_time, "triggered": False}
 
+                    dwell_duration = round(current_time - tracked_objects[obj_id]["first_seen"], 2)
                     # Check if customer has dwelled within frame for > 1.5s and is within close range
                     if is_target_dwelling(tracked_objects[obj_id]["first_seen"], current_time, 1.5):
                         if not tracked_objects[obj_id].get("triggered", False):
@@ -275,6 +278,7 @@ async def start_vision_loop(redis_url: str):
                                 "id": obj_id,
                                 "proximity": prox_desc,
                                 "distance_m": dist,
+                                "dwell_time_s": dwell_duration,
                                 "attributes": attrs,
                                 "frame_data": encoded_frame,
                             }

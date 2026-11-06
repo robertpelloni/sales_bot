@@ -69,7 +69,7 @@
             <div class="system-status-group">
                 <div class="status-pill">
                     <span class="status-dot"></span>
-                    <span>Hub v1.0.0 Online</span>
+                    <span>Hub v1.3.0 Online</span>
                     <span class="tooltip">ⓘ<span class="tooltiptext">FastAPI asynchronous control server running on port 8000.</span></span>
                 </div>
                 <div class="status-pill" id="ws-pill">
@@ -106,19 +106,125 @@
             <!-- LEFT COLUMN: Operations & Logs (High Value) -->
             <div class="column">
 
-                <!-- Simulation Engine -->
-                <div class="section highlight-section">
-                    <h2>Simulate Detection <span class="badge badge-primary">Active</span> <span class="tooltip">ⓘ<span class="tooltiptext">The core testing engine. Simulate what the vision system sees to instantly test the agent's generated response based on your current settings, inventory, and tactics.</span></span></h2>
-                    <form method="post" action="/simulate_detection">
+                <form method="post" action="/simulate_detection">
+                    <div class="form-group">
+                        <label for="attributes">Simulated Customer Profile Attributes
+                            <span class="tooltip">ⓘ<span class="tooltiptext">Macro visual attributes detected by YOLOv11n (e.g. clothing color, carried bags, posture). Strict privacy constraint: no facial tags or brand names.</span></span>
+                        </label>
+                        <div class="desc">Detected visual features sent into the frontier VLM context prompt.</div>
+                        <input type="text" id="attributes" name="attributes" value="navy blue windbreaker, baseball cap, holding coffee" required>
+                    </div>
+
+                    <div class="split-3">
+                        <div class="form-group">
+                            <label for="dwell_time_s">Dwell Time (Seconds)
+                                <span class="tooltip">ⓘ<span class="tooltiptext">Tracked dwell duration from edge vision (>5s triggers critical urgency and inventory scarcity hooks).</span></span>
+                            </label>
+                            <input type="number" id="dwell_time_s" name="dwell_time_s" step="0.5" min="0.0" max="60.0" value="5.5" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="distance_m">Proximity Distance (m)
+                                <span class="tooltip">ⓘ<span class="tooltiptext">Calibrated distance: close (≤1.2m), mid-range (1.2-2.5m), far (>2.5m).</span></span>
+                            </label>
+                            <input type="number" id="distance_m" name="distance_m" step="0.1" min="0.5" max="10.0" value="1.0" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="proximity">Zone Descriptor
+                                <span class="tooltip">ⓘ<span class="tooltiptext">Spatial zone calculated from bounding box height ratios.</span></span>
+                            </label>
+                            <select id="proximity" name="proximity">
+                                <option value="1.0m (close)" selected>1.0m (close)</option>
+                                <option value="1.8m (mid-range)">1.8m (mid-range)</option>
+                                <option value="3.2m (far)">3.2m (far)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="split-3">
+                        <div class="form-group">
+                            <label for="framework_selection">Framework Routing
+                                <span class="tooltip">ⓘ<span class="tooltiptext">Select 'auto' for dynamic Multi-Armed Bandit optimization or explicitly force a framework.</span></span>
+                            </label>
+                            <select id="framework_selection" name="framework_selection">
+                                <option value="auto" selected>Auto (Multi-Armed Bandit)</option>
+                                <option value="Pattern Interrupt Cold-Open">Pattern Interrupt Cold-Open</option>
+                                <option value="Challenger Sales Framework">Challenger Sales Framework</option>
+                                <option value="Consultative Problem-Solver">Consultative Problem-Solver</option>
+                                <option value="Assumptive Close Narrative">Assumptive Close Narrative</option>
+                            </select>
+                        </div>
                         <div class="form-group">
                             <label for="attributes">Customer Attributes</label>
                             <div class="desc">Comma-separated traits the mock vision system passes to the LLM.</div>
                             <input type="text" id="attributes" name="attributes" value="navy blue windbreaker, baseball cap, holding coffee" required>
                         </div>
-                        <div class="dashboard-grid" style="grid-template-columns: 2fr 1fr; grid-gap: 15px; margin-bottom: 15px;">
-                            <div class="form-group" style="margin-bottom: 0;">
-                                <label for="system_prompt_override">Prompt Override <span class="tooltip">ⓘ<span class="tooltiptext">Temporarily bypasses the dynamic store prompt for A/B testing a specific idea. Leave blank for normal operation.</span></span></label>
-                                <input type="text" id="system_prompt_override" name="system_prompt_override" placeholder="Optional manual override...">
+                        <div class="form-group">
+                            <label for="temperature">VLM Creativity (Temp)
+                                <span class="tooltip">ⓘ<span class="tooltiptext">Controls the randomness of cold open pitches. 0.2 = deterministic and focused; 0.8 = charismatic and adaptive.</span></span>
+                            </label>
+                            <input type="number" id="temperature" name="temperature" step="0.1" min="0.0" max="2.0" value="0.8">
+                        </div>
+                    </div>
+
+                    <button type="submit" style="width: 100%; font-size: 1.05em; padding: 12px;">
+                        ▶ Run Instant Detection & Generate Pitch
+                    </button>
+                </form>
+
+                {% if simulated_response %}
+                <div style="margin-top: 20px; padding: 16px; border-radius: 8px; background: #ffffff; border: 1px solid #bfdbfe; box-shadow: 0 2px 4px rgba(37,99,235,0.06);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <strong style="color: var(--primary); font-size: 0.95em;">Generated Autonomous Pitch:</strong>
+                        <span class="badge badge-sim">Simulated Output</span>
+                    </div>
+                    <div class="response-quote">"{{ simulated_response }}"</div>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- HIGH-PRIORITY COLUMN 2: LIVE INTERACTION LOG & ANALYTICS -->
+            <div class="card card-high-value">
+                <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <h2>📊 Live CRM Feed & Analytics <span class="badge badge-lead">Live SQLite Stream</span></h2>
+                        <span class="tooltip">ⓘ<span class="tooltiptext">Real-time log of in-store customer engagements persisted in sirens.db. Allows qualifying leads, rating responses, and logging sales staff notes.</span></span>
+                    </div>
+                    <div style="display: flex; gap: 6px; align-items: center;">
+                        <a href="/api/leads/export?all=false" download="crm_leads.csv" class="btn-secondary" style="padding: 4px 10px; font-size: 0.78em; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; border: 1px solid var(--border); border-radius: 6px; background: #ffffff; color: var(--text-main);">
+                            📥 Export Leads (CSV)
+                        </a>
+                        <a href="/api/leads/export?all=true" download="crm_all_interactions.csv" class="btn-secondary" style="padding: 4px 8px; font-size: 0.78em; text-decoration: none; border: 1px solid var(--border); border-radius: 6px; background: #f8fafc; color: var(--text-muted);" title="Export complete raw interaction log">
+                            All Logs
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Visual Charts Sub-Grid -->
+                <div class="split-2" style="margin-bottom: 16px;">
+                    <div style="background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid var(--border);">
+                        <div style="font-size: 0.8em; font-weight: 600; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase;">
+                            Volume (Last 7 Days)
+                        </div>
+                        <canvas id="interactionChart" width="100%" height="85"></canvas>
+                    </div>
+                    <div style="background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid var(--border);">
+                        <div style="font-size: 0.8em; font-weight: 600; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase;">
+                            Framework Effectiveness
+                        </div>
+                        <canvas id="frameworkChart" width="100%" height="85"></canvas>
+                    </div>
+                </div>
+
+                <!-- Scrollable CRM Stream -->
+                <div class="scrollable-feed" id="interaction-feed-container">
+                    {% for interaction in interactions %}
+                    <div class="item-card {% if interaction.is_lead %}lead-card{% endif %}">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px;">
+                            <div>
+                                <span style="font-weight: 600; color: var(--text-main); font-size: 0.9em;">Detected: {{ interaction.attributes }}</span>
+                                {% if interaction.is_lead %}
+                                <span class="badge badge-lead" style="margin-left: 6px;">Qualified Lead</span>
+                                {% endif %}
                             </div>
                             <div class="form-group" style="margin-bottom: 0;">
                                 <label for="temperature">Creativity (Temp) <span class="tooltip">ⓘ<span class="tooltiptext">LLM Temperature (0.0 to 2.0). Lower = predictable, Higher = creative/erratic. Default: 0.8</span></span></label>
@@ -198,13 +304,63 @@
                         <button type="submit" style="background-color: #f59e0b; white-space: nowrap;">Add Item</button>
                     </div>
                 </form>
+
+                <!-- DYNAMIC PROMOTIONS & DISCOUNTS SECTION -->
+                <div style="margin-top: 24px; padding-top: 16px; border-top: 1px dashed var(--border);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <div style="font-weight: 600; font-size: 0.95em; color: var(--text-main);">
+                            🏷️ Active Store Promotions & Dynamic Discounts
+                        </div>
+                        <span class="tooltip">ⓘ<span class="tooltiptext">Autonomous discounts synthesized dynamically into VLM cold-open pitches and dwell-time triggers.</span></span>
+                    </div>
+
+                    <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px;">
+                        {% for promo in promotions %}
+                        <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 8px 12px; display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <strong style="font-size: 0.85em; color: #166534;">{{ promo.rule_name }}</strong>
+                                <span class="badge" style="background: #dcfce7; color: #15803d; font-size: 0.75em; margin-left: 6px;">{{ promo.discount_percent }}% OFF</span>
+                                <span style="font-size: 0.75em; color: #047857; margin-left: 4px;">Trigger: {{ promo.trigger_type }}{% if promo.threshold %} ({{ promo.threshold }}){% endif %}</span>
+                                <div style="font-size: 0.75em; color: #4b5563; margin-top: 2px;">{{ promo.description }}</div>
+                            </div>
+                            <form method="post" action="/delete_promotion/{{ loop.index0 }}" style="margin: 0;">
+                                <button type="submit" class="btn-danger" style="padding: 2px 7px; font-size: 0.7em;" title="Remove promotion">✕</button>
+                            </form>
+                        </div>
+                        {% else %}
+                        <p style="color: var(--text-muted); font-size: 0.82em; font-style: italic; margin: 0;">No active promotions configured.</p>
+                        {% endfor %}
+                    </div>
+
+                    <!-- Add Promotion Form -->
+                    <form method="post" action="/add_promotion" style="background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid var(--border);">
+                        <div style="font-weight: 600; font-size: 0.82em; margin-bottom: 8px; color: var(--text-main);">+ Add Promotional Incentive Rule</div>
+                        <div class="split-2" style="margin-bottom: 8px;">
+                            <input type="text" name="rule_name" placeholder="Rule Name (e.g. Rainy Day Flash)" required>
+                            <input type="number" step="0.5" min="1" max="90" name="discount_percent" placeholder="Discount % (e.g. 15)" required>
+                        </div>
+                        <div class="split-2" style="margin-bottom: 8px;">
+                            <select name="trigger_type" required>
+                                <option value="weather_or_apparel">Trigger: Apparel / Weather Cues</option>
+                                <option value="dwell_time">Trigger: Dwell Time Duration</option>
+                                <option value="all_items">Trigger: Universal Store Promotion</option>
+                                <option value="volume_units">Trigger: Multi-Unit Purchase</option>
+                            </select>
+                            <input type="text" name="threshold" placeholder="Threshold (e.g. outerwear, 30s, 2+ units)">
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <input type="text" name="description" placeholder="Prompt guidance for LLM pitch" style="flex-grow: 1;">
+                            <button type="submit" style="background-color: #059669; color: white; white-space: nowrap;">Save Rule</button>
+                        </div>
+                    </form>
+                </div>
             </div>
 
             <!-- AGENT SALES PSYCHOLOGY & SYSTEM SETTINGS -->
             <div class="card">
                 <div class="card-header">
                     <h2>🎰 Automated A/B Sales Framework Optimization <span class="badge" style="background: #ede9fe; color: #6d28d9; border: 1px solid #ddd6fe;">Multi-Armed Bandit</span></h2>
-                    <span class="tooltip">ⓘ<span class="tooltiptext">Autonomous Thompson Sampling engine allocating traffic across sales frameworks based on lead conversions and feedback scores.</span></span>
+                    <span class="tooltip">ⓘ<span class="tooltiptext">Autonomous Thompson Sampling, Epsilon-Greedy with decay, and UCB1 bandit allocating traffic across sales frameworks based on lead conversions and feedback scores.</span></span>
                 </div>
 
                 <div style="margin-bottom: 16px;">
@@ -218,6 +374,9 @@
                                 <strong style="font-size: 0.85em; color: var(--text-main);">{{ fw_name }}</strong>
                                 <div style="font-size: 0.75em; color: var(--text-muted);">
                                     Trials: {{ stats.trials }} | Leads: {{ stats.leads }} | Rating sum: +{{ stats.positive_ratings }}
+                                    {% if stats.trials > 0 %}
+                                    <span style="color: #64748b; margin-left: 6px;">[95% CI: {{ stats.ci_lower }}% - {{ stats.ci_upper }}%]</span>
+                                    {% endif %}
                                 </div>
                             </div>
                             <div style="text-align: right;">
@@ -229,6 +388,47 @@
                         </div>
                         {% endfor %}
                     </div>
+                </div>
+
+                <!-- Bandit Hyperparameters Tuning Form -->
+                <div style="background: #f1f5f9; border-radius: 8px; padding: 12px; margin-bottom: 16px; border: 1px solid #e2e8f0;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <strong style="font-size: 0.85em; color: #334155;">⚙️ Bandit Algorithmic Tuning</strong>
+                        <span class="badge" style="background: #e0f2fe; color: #0284c7; font-size: 0.75em;">Active: {{ bandit_config.default_method|upper }}</span>
+                    </div>
+                    <form method="post" action="/update_ab_config">
+                        <div class="split-3" style="margin-bottom: 8px;">
+                            <div class="form-group">
+                                <label for="default_method" style="font-size: 0.75em;">Algorithm Strategy
+                                    <span class="tooltip">ⓘ<span class="tooltiptext">Bandit routing algorithm: Thompson Sampling (Bayesian), UCB1 (Upper Confidence Bound), or Epsilon-Greedy with decay.</span></span>
+                                </label>
+                                <select id="default_method" name="default_method" style="font-size: 0.85em; padding: 6px;">
+                                    <option value="thompson" {% if bandit_config.default_method == 'thompson' %}selected{% endif %}>Thompson Sampling (Bayesian)</option>
+                                    <option value="ucb1" {% if bandit_config.default_method == 'ucb1' %}selected{% endif %}>UCB1 (Upper Confidence Bound)</option>
+                                    <option value="epsilon_greedy" {% if bandit_config.default_method == 'epsilon_greedy' %}selected{% endif %}>Epsilon-Greedy (Decay)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="epsilon" style="font-size: 0.75em;">Exploration Epsilon (ε)
+                                    <span class="tooltip">ⓘ<span class="tooltiptext">Probability of random exploratory allocation (default 0.20 = 20%).</span></span>
+                                </label>
+                                <input type="number" id="epsilon" name="epsilon" step="0.01" min="0.0" max="1.0" value="{{ '%.2f'|format(bandit_config.epsilon) }}" style="font-size: 0.85em; padding: 6px;">
+                            </div>
+                            <div class="form-group">
+                                <label for="decay_rate" style="font-size: 0.75em;">Decay Rate / Min ε
+                                    <span class="tooltip">ⓘ<span class="tooltiptext">Geometric decay factor applied to epsilon after each trial down to the minimum floor.</span></span>
+                                </label>
+                                <div style="display: flex; gap: 4px;">
+                                    <input type="number" id="decay_rate" name="decay_rate" step="0.01" min="0.5" max="1.0" value="{{ '%.2f'|format(bandit_config.decay_rate) }}" style="font-size: 0.85em; padding: 6px;" title="Decay Rate">
+                                    <input type="number" id="min_epsilon" name="min_epsilon" step="0.01" min="0.0" max="0.5" value="{{ '%.2f'|format(bandit_config.min_epsilon) }}" style="font-size: 0.85em; padding: 6px;" title="Min Epsilon">
+                                </div>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <button type="submit" style="flex-grow: 1; font-size: 0.8em; padding: 6px; background-color: #4f46e5; color: white;">Save Bandit Config</button>
+                            <button type="submit" formaction="/reset_ab_bandit" style="font-size: 0.8em; padding: 6px 12px; background-color: #64748b; color: white;">Reset State</button>
+                        </div>
+                    </form>
                 </div>
 
                 <div class="card-header" style="margin-top: 8px;">

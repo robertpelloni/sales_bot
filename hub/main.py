@@ -5,7 +5,12 @@ import json
 # Ensure project root is in sys.path so we can import src modules globally
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from fastapi import FastAPI, Request, Form, Depends, HTTPException, status
+from contextlib import asynccontextmanager
+import signal
+import io
+import csv
+from typing import List, Optional
+from fastapi import FastAPI, Request, Form, Depends, HTTPException, status, WebSocket, WebSocketDisconnect, Response
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.responses import HTMLResponse
 import secrets
@@ -73,6 +78,7 @@ async def log_interaction(interaction: InteractionCreate, db: AsyncSession = Dep
 async def read_root(request: Request, simulated_response: str = "", error_message: str = "", db: AsyncSession = Depends(get_db), username: str = Depends(get_current_username)):
     store_name = ""
     items = []
+    promotions = []
     sales_framework = ""
     tactics_enforced = []
     constraints = []
@@ -84,6 +90,7 @@ async def read_root(request: Request, simulated_response: str = "", error_messag
                 inv = json.load(f)
                 store_name = inv.get("store_name", "")
                 items = inv.get("items", [])
+                promotions = inv.get("promotions", [])
 
         pm_path = get_config_path("prompt_modifiers.json")
         if pm_path:
@@ -143,6 +150,7 @@ async def read_root(request: Request, simulated_response: str = "", error_messag
         "framework_leads": json.dumps(framework_leads),
         "store_name": store_name,
         "items": items,
+        "promotions": promotions,
         "sales_framework": sales_framework,
         "tactics_enforced": tactics_enforced,
         "constraints": constraints,
@@ -151,6 +159,12 @@ async def read_root(request: Request, simulated_response: str = "", error_messag
         "simulated_response": simulated_response,
         "interactions": interactions,
         "bandit_stats": bandit_stats,
+        "bandit_config": {
+            "epsilon": bandit_engine.epsilon,
+            "decay_rate": bandit_engine.decay_rate,
+            "min_epsilon": bandit_engine.min_epsilon,
+            "default_method": bandit_engine.default_method
+        },
         "error_message": error_message
     })
 
@@ -242,6 +256,70 @@ async def add_item(request: Request, product_name: str = Form(...), price_usd: f
     except Exception as e:
         print(f"Error adding item: {e}")
         return await read_root(request, error_message=f"Error adding item: {e}", db=db)
+
+    return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
+
+@app.post("/add_promotion")
+async def add_promotion(
+    request: Request,
+    rule_name: str = Form(...),
+    discount_percent: float = Form(...),
+    trigger_type: str = Form(...),
+    threshold: str = Form(""),
+    description: str = Form(""),
+    db: AsyncSession = Depends(get_db),
+    username: str = Depends(get_current_username)
+):
+    """Adds a dynamic promotional discount rule to inventory configuration."""
+    try:
+        inv_path = get_config_path("inventory.json")
+        inv = {"store_name": "", "items": [], "promotions": []}
+        if os.path.exists(inv_path):
+            with open(inv_path, "r") as f:
+                inv = json.load(f)
+
+        if "promotions" not in inv or not isinstance(inv["promotions"], list):
+            inv["promotions"] = []
+
+        new_promo = {
+            "rule_name": rule_name.strip(),
+            "discount_percent": float(discount_percent),
+            "trigger_type": trigger_type.strip(),
+            "threshold": threshold.strip(),
+            "description": description.strip()
+        }
+        inv["promotions"].append(new_promo)
+
+        with open(inv_path, "w") as f:
+            json.dump(inv, f, indent=2)
+    except Exception as e:
+        print(f"Error adding promotion: {e}")
+        return await read_root(request, error_message=f"Error adding promotion: {e}", db=db)
+
+    return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
+
+@app.post("/delete_promotion/{promo_index}")
+async def delete_promotion(
+    request: Request,
+    promo_index: int,
+    db: AsyncSession = Depends(get_db),
+    username: str = Depends(get_current_username)
+):
+    """Deletes an active promotional rule by its index."""
+    try:
+        inv_path = get_config_path("inventory.json")
+        if os.path.exists(inv_path):
+            with open(inv_path, "r") as f:
+                inv = json.load(f)
+
+            if "promotions" in inv and 0 <= promo_index < len(inv["promotions"]):
+                inv["promotions"].pop(promo_index)
+
+            with open(inv_path, "w") as f:
+                json.dump(inv, f, indent=2)
+    except Exception as e:
+        print(f"Error deleting promotion: {e}")
+        return await read_root(request, error_message=f"Error deleting promotion: {e}", db=db)
 
     return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
 
@@ -372,15 +450,33 @@ async def simulate_detection(
     attributes: str = Form(...),
     system_prompt_override: str = Form(""),
     temperature: float = Form(0.8),
+    proximity: str = Form("1.0m (close)"),
+    distance_m: float = Form(1.0),
+    dwell_time_s: float = Form(1.8),
+    framework_selection: str = Form("auto"),
     db: AsyncSession = Depends(get_db), username: str = Depends(get_current_username)
 ):
     from src.llm_client import process_vlm_stream
 
+    # Dynamically resolve framework if requested or defaulted to auto bandit allocation
+    effective_framework = None
+    if framework_selection == "auto":
+        try:
+            chosen_fw, _ = await bandit_engine.allocate_next_framework(db)
+            effective_framework = chosen_fw
+        except Exception as e:
+            print(f"Error during bandit framework allocation: {e}")
+    elif framework_selection.strip():
+        effective_framework = framework_selection.strip()
+
     attrs_list = [attr.strip() for attr in attributes.split(",")]
     mock_packet = {
         "id": 999,
-        "proximity": "1.0m",
+        "proximity": proximity.strip(),
+        "distance_m": distance_m,
+        "dwell_time_s": dwell_time_s,
         "attributes": attrs_list,
+        "sales_framework": effective_framework,
         "frame_data": "",
         "system_prompt_override": system_prompt_override.strip(),
         "temperature": temperature
@@ -415,11 +511,13 @@ async def get_server_status(username: str = Depends(get_current_username)):
 
     inv_path = get_config_path("inventory.json")
     item_count = 0
+    promotions_count = 0
     if os.path.exists(inv_path):
         try:
             with open(inv_path, "r") as f:
                 inv = json.load(f)
                 item_count = len(inv.get("items", []))
+                promotions_count = len(inv.get("promotions", []))
         except Exception:
             pass
 
@@ -440,26 +538,193 @@ async def get_server_status(username: str = Depends(get_current_username)):
         "mock_vision": str(use_mock_vision).lower() == "true",
         "camera_index": str(camera_index),
         "has_openai_key": bool(openai_key),
-        "inventory_item_count": item_count
+        "inventory_item_count": item_count,
+        "active_promotions_count": promotions_count
     }
 
 
 @app.get("/api/ab/allocations")
 async def get_ab_allocations(db: AsyncSession = Depends(get_db), username: str = Depends(get_current_username)):
-    """Returns the multi-armed bandit framework performance, empirical win rates, and Bayesian priors."""
+    """Returns the multi-armed bandit framework performance, empirical win rates, confidence intervals, and Bayesian priors."""
     stats = await bandit_engine.get_framework_performance(db)
-    return {"status": "success", "allocations": stats}
+    return {
+        "status": "success",
+        "allocations": stats,
+        "config": {
+            "epsilon": bandit_engine.epsilon,
+            "decay_rate": bandit_engine.decay_rate,
+            "min_epsilon": bandit_engine.min_epsilon,
+            "default_method": bandit_engine.default_method
+        }
+    }
 
 
 @app.post("/api/ab/select_framework")
-async def select_ab_framework(method: str = "thompson", db: AsyncSession = Depends(get_db), username: str = Depends(get_current_username)):
+async def select_ab_framework(method: Optional[str] = None, db: AsyncSession = Depends(get_db), username: str = Depends(get_current_username)):
     """Dynamically samples the optimal sales framework for an incoming customer interaction."""
     chosen_framework, stats = await bandit_engine.allocate_next_framework(db, method=method)
     return {
         "status": "success",
         "selected_framework": chosen_framework,
-        "method": method,
+        "method": method or bandit_engine.default_method,
         "conversion_rate": stats.get(chosen_framework, {}).get("conversion_rate", 0.0)
+    }
+
+
+class BanditConfigPayload(BaseModel):
+    epsilon: Optional[float] = None
+    decay_rate: Optional[float] = None
+    min_epsilon: Optional[float] = None
+    default_method: Optional[str] = None
+
+
+@app.post("/api/ab/config")
+async def configure_ab_bandit(
+    payload: BanditConfigPayload,
+    username: str = Depends(get_current_username)
+):
+    """Dynamically reconfigures multi-armed bandit algorithmic parameters."""
+    if payload.epsilon is not None:
+        bandit_engine.epsilon = max(0.0, min(1.0, float(payload.epsilon)))
+    if payload.decay_rate is not None:
+        bandit_engine.decay_rate = max(0.5, min(1.0, float(payload.decay_rate)))
+    if payload.min_epsilon is not None:
+        bandit_engine.min_epsilon = max(0.0, min(1.0, float(payload.min_epsilon)))
+    if payload.default_method is not None:
+        if payload.default_method in ["thompson", "epsilon_greedy", "ucb1"]:
+            bandit_engine.default_method = payload.default_method
+
+    return {
+        "status": "success",
+        "config": {
+            "epsilon": bandit_engine.epsilon,
+            "decay_rate": bandit_engine.decay_rate,
+            "min_epsilon": bandit_engine.min_epsilon,
+            "default_method": bandit_engine.default_method
+        }
+    }
+
+
+@app.post("/api/ab/reset")
+async def reset_ab_bandit(
+    epsilon: Optional[float] = None,
+    username: str = Depends(get_current_username)
+):
+    """Resets the bandit exploration state and parameters to initial defaults."""
+    bandit_engine.reset_parameters(epsilon=epsilon)
+    return {
+        "status": "success",
+        "message": "Multi-Armed Bandit parameters and prior overrides reset successfully",
+        "config": {
+            "epsilon": bandit_engine.epsilon,
+            "decay_rate": bandit_engine.decay_rate,
+            "min_epsilon": bandit_engine.min_epsilon,
+            "default_method": bandit_engine.default_method
+        }
+    }
+
+
+@app.post("/update_ab_config")
+async def update_ab_config_form(
+    request: Request,
+    epsilon: float = Form(0.20),
+    decay_rate: float = Form(0.99),
+    min_epsilon: float = Form(0.05),
+    default_method: str = Form("thompson"),
+    db: AsyncSession = Depends(get_db),
+    username: str = Depends(get_current_username)
+):
+    """UI form endpoint to update bandit algorithm hyperparameters."""
+    bandit_engine.epsilon = max(0.0, min(1.0, float(epsilon)))
+    bandit_engine.decay_rate = max(0.5, min(1.0, float(decay_rate)))
+    bandit_engine.min_epsilon = max(0.0, min(1.0, float(min_epsilon)))
+    if default_method in ["thompson", "epsilon_greedy", "ucb1"]:
+        bandit_engine.default_method = default_method
+    return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@app.post("/reset_ab_bandit")
+async def reset_ab_bandit_form(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    username: str = Depends(get_current_username)
+):
+    """UI form endpoint to reset bandit parameters."""
+    bandit_engine.reset_parameters()
+    return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@app.get("/api/leads/export")
+async def export_leads_csv(all: bool = False, db: AsyncSession = Depends(get_db), username: str = Depends(get_current_username)):
+    """Exports CRM interactions as a downloadable CSV. Defaults to qualified leads only."""
+    query = select(Interaction)
+    if not all:
+        query = query.filter(Interaction.is_lead == True)
+    query = query.order_by(Interaction.id.desc())
+
+    result = await db.execute(query)
+    interactions = result.scalars().all()
+
+    output = io.StringIO()
+    writer = csv.writer(output, quoting=csv.QUOTE_MINIMAL)
+    writer.writerow([
+        "id",
+        "timestamp",
+        "attributes",
+        "response",
+        "sales_framework",
+        "is_lead",
+        "follow_up_notes",
+        "tts_latency_ms",
+        "feedback_score"
+    ])
+
+    for item in interactions:
+        writer.writerow([
+            item.id,
+            item.timestamp.isoformat() if item.timestamp else "",
+            item.attributes or "",
+            item.response or "",
+            item.sales_framework or "",
+            item.is_lead,
+            item.follow_up_notes or "",
+            item.tts_latency_ms or 0,
+            item.feedback_score or 0
+        ])
+
+    csv_data = output.getvalue()
+    filename = "crm_all_interactions.csv" if all else "crm_leads.csv"
+    return Response(
+        content=csv_data,
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+    )
+
+
+@app.get("/api/analytics/summary")
+async def get_analytics_summary(db: AsyncSession = Depends(get_db), username: str = Depends(get_current_username)):
+    """Aggregates CRM conversion metrics, lead velocity, and average latency stats."""
+    total_result = await db.execute(select(func.count(Interaction.id)))
+    total_interactions = total_result.scalar() or 0
+
+    lead_result = await db.execute(select(func.count(Interaction.id)).filter(Interaction.is_lead == True))
+    total_leads = lead_result.scalar() or 0
+
+    latency_result = await db.execute(select(func.avg(Interaction.tts_latency_ms)))
+    avg_latency = latency_result.scalar() or 0.0
+
+    feedback_result = await db.execute(select(func.avg(Interaction.feedback_score)).filter(Interaction.feedback_score > 0))
+    avg_feedback = feedback_result.scalar() or 0.0
+
+    conversion_rate = round((total_leads / total_interactions * 100), 2) if total_interactions > 0 else 0.0
+
+    return {
+        "status": "success",
+        "total_interactions": total_interactions,
+        "total_leads": total_leads,
+        "conversion_rate_percent": conversion_rate,
+        "avg_tts_latency_ms": round(float(avg_latency), 1),
+        "avg_feedback_score": round(float(avg_feedback), 2)
     }
 
 

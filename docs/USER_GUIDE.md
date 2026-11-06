@@ -34,12 +34,14 @@ The agent's personality is controlled via the **Agent Prompt Modifiers** panel.
 
 ---
 
-## 4. Running Detection Simulations
-You do not need to stand in front of a camera to test your agent. Use the **Simulation Engine** to run A/B tests on your settings.
-1. In the Left Column, find the **Simulation Engine**.
-2. Enter mock visual traits in the **Simulated Visual Attributes** box (e.g., *"red hat, looking at watch, carrying coffee"*).
-3. Adjust the **Temperature** (0.0 makes the agent robotic and predictable; 1.0 makes it creative and erratic).
-4. Click **Run Simulation**. The agent's psychological response will render directly on your screen.
+## 4. Live CRM Feed & Visual Analytics
+Every customer interaction is streamed and persisted in `sirens.db`:
+- **Interaction Charts**: Chart.js graphs track conversation volume over the past 7 days and sales framework conversion efficiency.
+- **Lead Qualification**: Click **Flag as Qualified Lead** on any successful pitch.
+- **Staff Pitch Ratings**: Rate cold opens with 👎 or 👍 to tune sales rules.
+- **Follow-up Notes**: Add staff notes directly to customer interaction cards.
+- **Exporting CRM Leads & Logs (CSV)**: Click **Export Leads (CSV)** to stream and download all flagged qualified leads directly into an RFC 4180 CSV spreadsheet. To export every customer interaction log regardless of lead qualification, click **All Logs**.
+- **Automated A/B Sales Framework Optimization**: Inspect live empirical win rates, Beta prior parameters ($\alpha, \beta$), and 95% confidence intervals per sales framework. Tune algorithm routing strategies (Thompson Sampling, Upper Confidence Bound UCB1, or Epsilon-Greedy with geometric decay) and exploration parameters directly from the dashboard card.
 
 ---
 

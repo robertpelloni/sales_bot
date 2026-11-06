@@ -27,10 +27,33 @@
 - [x] Add high-value dashboard optimization card with live win rate badges and parameter metrics.
 - [x] Visual Playwright verification and unit/integration tests (`tests/test_ab_engine.py`, `tests/test_api.py`).
 
-## Short-Term (1.0.0)
-- [ ] Implement Coral Edge TPU compiled TFLite model runner for YOLOv11n in `src/vision.py`.
-- [ ] Add dynamic discount rule builder to the Inventory panel for automated volume pricing.
+## Completed in 1.0.0
+- [x] Implement Multi-Armed Bandit engine (`hub/ab_engine.py`) with Thompson Sampling and $\epsilon$-greedy strategies.
+- [x] Implement Coral Edge TPU compiled TFLite model runner for YOLOv11n in `src/vision.py` with Ultralytics and `tflite_runtime` delegate fallbacks.
+- [x] Integrate REST endpoints (`/api/ab/allocations`, `/api/ab/select_framework`) and dashboard card.
 
-## Long-Term (1.1.0+)
-- [ ] Multi-kiosk fleet synchronization via central Redis clustering or gRPC mesh.
+## Completed in 1.1.0
+- [x] Add dynamic promotional discount rule builder to the Inventory panel for automated volume and condition-triggered pricing.
+- [x] Integrate active promotional campaigns into LLM sales prompt synthesis (`src/llm_client.py`).
+- [x] Add interactive promotion management UI in dashboard with badges, trigger tags, and tooltip guidance.
+- [x] Add Playwright visual verification and test suite expansion (`tests/test_promotions.py`, `tests/test_api.py`).
+
+## Completed in 1.2.0
+- [x] Implement streaming CSV export endpoint (`GET /api/leads/export`) with query filtering (`all=true` or qualified leads only).
+- [x] Expose aggregated analytics summary endpoint (`GET /api/analytics/summary`) calculating conversion percentages, avg latency, and avg feedback score.
+- [x] Wire CSV export buttons (`Export Leads (CSV)`, `All Logs`) into dashboard Live CRM Feed & Analytics header.
+- [x] Add test suite (`tests/test_leads_export.py`) and visual Playwright UI verification.
+
+## Completed in 1.3.0
+- [x] Implement multi-algorithm bandit optimization with Upper Confidence Bound (UCB1) and Epsilon-Greedy with geometric decay in `hub/ab_engine.py`.
+- [x] Compute and display 95% Wilson confidence intervals across all candidate sales framework arms.
+- [x] Expose REST endpoints `POST /api/ab/config` and `POST /api/ab/reset` for runtime hyperparameter tuning.
+- [x] Connect bandit algorithm selection controls and state reset triggers to dashboard UI.
+- [x] Enable autonomous dynamic framework routing in simulated detections (`hub/main.py`).
+
+## Short-Term (1.4.0)
 - [ ] Multi-armed bandit reward convergence on customer dwell time alongside explicit lead conversion.
+- [ ] External CRM webhook dispatching (HubSpot, Salesforce, Zapier) for automated lead forwarding.
+
+## Long-Term (1.5.0+)
+- [ ] Multi-kiosk fleet synchronization via central Redis clustering or gRPC mesh.
