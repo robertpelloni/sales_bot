@@ -46,17 +46,69 @@ async def load_configs() -> Tuple[Dict[str, Any], Dict[str, Any]]:
     return inventory, prompt_modifiers
 
 
-def construct_system_prompt(inventory: Dict[str, Any], prompt_modifiers: Dict[str, Any]) -> str:
-    """Constructs comprehensive retail behavioral prompt incorporating store inventory and psychological rules."""
+def match_promotions(promotions: List[Dict[str, Any]], customer_packet: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """
+    Evaluates customer sensory context (dwell time, proximity, visual traits) against
+    active promotional incentive rules to determine which discounts apply dynamically.
+    """
+    matched = []
+    dwell_time = float(customer_packet.get("dwell_time_s", 0.0) or 0.0)
+    attributes = [a.lower() for a in customer_packet.get("attributes", [])]
+    attributes_str = " ".join(attributes)
+
+    for promo in promotions:
+        trigger_type = promo.get("trigger_type", "all_items")
+        threshold = str(promo.get("threshold", "")).lower()
+
+        if trigger_type == "all_items":
+            matched.append(promo)
+        elif trigger_type == "weather_or_apparel":
+            if any(term in attributes_str for term in ["outerwear", "jacket", "coat", "windbreaker", "rain"]):
+                matched.append(promo)
+        elif trigger_type == "dwell_time":
+            # Extract numeric seconds if possible (e.g. '30s' -> 30.0 or '1.5s' -> 1.5)
+            match = re.search(r"(\d+(\.\d+)?)", threshold)
+            target_dwell = float(match.group(1)) if match else 2.0
+            if dwell_time >= target_dwell:
+                matched.append(promo)
+        else:
+            matched.append(promo)
+
+    return matched
+
+
+def construct_system_prompt(
+    inventory: Dict[str, Any],
+    prompt_modifiers: Dict[str, Any],
+    bandit_insights: Optional[Dict[str, Any]] = None
+) -> str:
+    """
+    Constructs comprehensive retail behavioral prompt incorporating store inventory,
+    psychological rules, and multi-armed bandit empirical framework performance insights.
+    """
+    framework = prompt_modifiers.get("sales_framework", "Pattern Interrupt Cold-Open")
+    if bandit_insights and "recommended_framework" in bandit_insights:
+        framework = bandit_insights["recommended_framework"]
+
     system_prompt = (
         f"You are an elite, highly charismatic retail sales professional operating in {inventory.get('store_name', 'Store')}.\n"
-        f"Primary Framework: {prompt_modifiers.get('sales_framework', 'Pattern Interrupt Cold-Open')}\n"
-        f"Inventory Available:\n{json.dumps(inventory.get('items', []), indent=2)}\n"
+        f"Primary Framework: {framework}\n"
     )
+
+    if bandit_insights:
+        system_prompt += "Multi-Armed Bandit Empirical Optimization Insights:\n"
+        if "win_rate" in bandit_insights:
+            system_prompt += f"- Top Performing Strategy Win Rate: {bandit_insights['win_rate']:.1f}%\n"
+        if "guidance" in bandit_insights:
+            system_prompt += f"- Execution Directive: {bandit_insights['guidance']}\n"
+        if "confidence_interval" in bandit_insights:
+            system_prompt += f"- Conversion 95% Confidence: {bandit_insights['confidence_interval']}\n"
+
+    system_prompt += f"Inventory Available:\n{json.dumps(inventory.get('items', []), indent=2)}\n"
 
     promotions = inventory.get("promotions", [])
     if promotions:
-        system_prompt += f"Active Promotional Rules & Discounts:\n{json.dumps(promotions, indent=2)}\n"
+        system_prompt += f"Active Promotional Rules & Dynamic Discounts:\n{json.dumps(promotions, indent=2)}\n"
 
     system_prompt += "Tactics to enforce:\n"
     for tactic in prompt_modifiers.get("tactics_enforced", []):
@@ -139,10 +191,14 @@ def derive_scarcity_and_urgency(customer_packet: Dict[str, Any]) -> Tuple[str, s
     return urgency_level, directive
 
 
-def format_multimodal_user_content(customer_packet: Dict[str, Any]) -> List[Dict[str, Any]]:
+def format_multimodal_user_content(
+    customer_packet: Dict[str, Any],
+    matched_promos: Optional[List[Dict[str, Any]]] = None
+) -> List[Dict[str, Any]]:
     """
     Constructs OpenAI/Gemini compatible multimodal message content containing
-    descriptive customer attributes, dwell time, calibrated distance, and dynamic scarcity directives.
+    descriptive customer attributes, dwell time, calibrated distance, dynamic scarcity directives,
+    and personalized promotional triggers.
     """
     attributes_str = ", ".join(customer_packet.get("attributes", []))
     proximity = customer_packet.get("proximity", "near")
@@ -156,8 +212,19 @@ def format_multimodal_user_content(customer_packet: Dict[str, Any]) -> List[Dict
         f"Detected visual features: {attributes_str}.\n"
         f"Dynamic Urgency Level: {urgency_level}\n"
         f"Behavioral Scarcity Directive: {scarcity_directive}\n"
-        "Engage them immediately with a charismatic, observational pattern interrupt incorporating the scarcity directive."
     )
+
+    if matched_promos:
+        promo_descriptions = [f"{p.get('rule_name')}: {p.get('discount_percent')}% off ({p.get('description', '')})" for p in matched_promos]
+        prompt_text += f"Matched Dynamic Promotional Triggers for Customer Context:\n- " + "\n- ".join(promo_descriptions) + "\n"
+        prompt_text += "Autonomously weave the matched promotional discount and scarcity incentive into your opening pitch.\n"
+
+    bandit_insights = customer_packet.get("bandit_insights")
+    if bandit_insights and isinstance(bandit_insights, dict):
+        if "recommended_framework" in bandit_insights:
+            prompt_text += f"Active Bandit Framework: {bandit_insights['recommended_framework']}\n"
+
+    prompt_text += "Engage them immediately with a charismatic, observational pattern interrupt incorporating the scarcity directive."
 
     content_parts: List[Dict[str, Any]] = [{"type": "text", "text": prompt_text}]
 
@@ -178,7 +245,8 @@ async def generate_sales_response(sys_prompt: str, customer_packet: Dict[str, An
     """
     Generates the sales pitch based on system prompt, customer context, and dynamic scarcity elements.
     If an OpenAI API key is configured and valid, uses the multimodal chat completion API.
-    Otherwise, gracefully falls back to deterministic psychological responses with scaled urgency.
+    Otherwise, gracefully falls back to deterministic psychological responses with scaled urgency,
+    promotional recommendations, and bandit-informed strategies.
     """
     api_key, _ = get_system_config()
 
@@ -187,10 +255,13 @@ async def generate_sales_response(sys_prompt: str, customer_packet: Dict[str, An
     if override_prompt:
         sys_prompt = override_prompt
 
+    # Extract matched dynamic promotions if available in customer_packet
+    matched_promos = customer_packet.get("matched_promos", [])
+
     if api_key and api_key.strip() and AsyncOpenAI is not None:
         try:
             client = AsyncOpenAI(api_key=api_key)
-            user_content = format_multimodal_user_content(customer_packet)
+            user_content = format_multimodal_user_content(customer_packet, matched_promos=matched_promos)
 
             response = await client.chat.completions.create(
                 model="gpt-4o-mini",
@@ -205,7 +276,7 @@ async def generate_sales_response(sys_prompt: str, customer_packet: Dict[str, An
         except Exception as e:
             print(f"Frontier VLM API Error (falling back to local mock): {e}")
 
-    # Fallback heuristic sales psychology logic with dynamic scarcity & urgency scaling
+    # Fallback heuristic sales psychology logic with dynamic scarcity, promotions, & urgency scaling
     attributes = customer_packet.get("attributes", [])
     lower_attrs = " ".join(attributes).lower()
     urgency_level, _ = derive_scarcity_and_urgency(customer_packet)
@@ -218,6 +289,12 @@ async def generate_sales_response(sys_prompt: str, customer_packet: Dict[str, An
     elif urgency_level == "MODERATE_URGENCY":
         scarcity_suffix = " We just put out our last batch for the weekend."
 
+    # Promotional hook injection into fallback pitch
+    promo_hook = ""
+    if matched_promos:
+        top_promo = matched_promos[0]
+        promo_hook = f" Plus, your visit qualifies for our {top_promo.get('rule_name')} offering {top_promo.get('discount_percent')}% off today!"
+
     if any(k in lower_attrs for k in ["coat", "jacket", "windbreaker", "warm-toned"]):
         pitch = "That's a serious winter coat. You look like you're actually ready for this wind outside! Come feel how incredibly lightweight this fleece option is right here."
     elif any(k in lower_attrs for k in ["coffee", "cup", "drink"]):
@@ -227,7 +304,7 @@ async def generate_sales_response(sys_prompt: str, customer_packet: Dict[str, An
     else:
         pitch = "Hey there! If you have a minute, I'd love to show you something that just arrived in store."
 
-    return (pitch + scarcity_suffix).strip()
+    return (pitch + promo_hook + scarcity_suffix).strip()
 
 
 def chunk_text_stream(full_text: str) -> List[str]:
@@ -260,7 +337,14 @@ async def process_vlm_stream(data: str, redis_client=None) -> str:
     try:
         packet = json.loads(data) if isinstance(data, str) else data
         inventory, prompt_modifiers = await load_configs()
-        sys_prompt = construct_system_prompt(inventory, prompt_modifiers)
+
+        # Dynamic promotional matching based on customer context
+        promotions = inventory.get("promotions", [])
+        matched_promos = match_promotions(promotions, packet)
+        packet["matched_promos"] = matched_promos
+
+        bandit_insights = packet.get("bandit_insights")
+        sys_prompt = construct_system_prompt(inventory, prompt_modifiers, bandit_insights=bandit_insights)
 
         simulated_response = await generate_sales_response(sys_prompt, packet)
 

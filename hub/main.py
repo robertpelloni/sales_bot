@@ -532,20 +532,37 @@ async def simulate_detection(
 ):
     from src.llm_client import process_vlm_stream
 
-    # Dynamically resolve framework if requested or defaulted to auto bandit allocation
+    # Dynamically resolve framework and bandit performance metrics for simulation prompt synthesis
     effective_framework = None
-    if framework_selection == "auto":
-        try:
+    bandit_insights = None
+    try:
+        framework_stats = await bandit_engine.get_framework_performance(db)
+        if framework_selection == "auto":
             chosen_fw, _ = await bandit_engine.allocate_next_framework(
                 db,
                 dwell_time=dwell_time_s,
                 distance_m=distance_m
             )
             effective_framework = chosen_fw
-        except Exception as e:
-            print(f"Error during bandit framework allocation: {e}")
-    elif framework_selection.strip():
-        effective_framework = framework_selection.strip()
+        elif framework_selection.strip():
+            effective_framework = framework_selection.strip()
+
+        fw_target = effective_framework or "Pattern Interrupt Cold-Open"
+        target_stats = framework_stats.get(fw_target, {})
+        win_rate = target_stats.get("win_rate", 0.0) * 100.0
+        ci_lower = target_stats.get("ci_lower", 0.0) * 100.0
+        ci_upper = target_stats.get("ci_upper", 0.0) * 100.0
+
+        bandit_insights = {
+            "recommended_framework": fw_target,
+            "win_rate": win_rate,
+            "guidance": f"Bandit optimization active with empirical win rate {win_rate:.1f}%. Prioritize high-conversion value hooks.",
+            "confidence_interval": f"[{ci_lower:.1f}% - {ci_upper:.1f}%]"
+        }
+    except Exception as e:
+        print(f"Error extracting bandit performance metrics: {e}")
+        if framework_selection.strip() and framework_selection != "auto":
+            effective_framework = framework_selection.strip()
 
     attrs_list = [attr.strip() for attr in attributes.split(",")]
     mock_packet = {
@@ -555,6 +572,7 @@ async def simulate_detection(
         "dwell_time_s": dwell_time_s,
         "attributes": attrs_list,
         "sales_framework": effective_framework,
+        "bandit_insights": bandit_insights,
         "frame_data": "",
         "system_prompt_override": system_prompt_override.strip(),
         "temperature": temperature

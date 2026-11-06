@@ -120,12 +120,52 @@ async def test_construct_system_prompt():
     }
     prompt_modifiers = {"sales_framework": "Test Framework", "tactics_enforced": ["Urgency"], "constraints": ["Be polite"]}
 
+    # Without bandit insights
     prompt = construct_system_prompt(inventory, prompt_modifiers)
     assert "Test Store" in prompt
     assert "Test Framework" in prompt
     assert "Summer Promo" in prompt
     assert "Urgency" in prompt
     assert "Be polite" in prompt
+
+    # With bandit insights
+    bandit_insights = {
+        "recommended_framework": "Challenger Sales Framework",
+        "win_rate": 38.5,
+        "guidance": "Empirical leader from Bayesian bandit.",
+        "confidence_interval": "[28.0% - 50.0%]"
+    }
+    prompt_with_bandit = construct_system_prompt(inventory, prompt_modifiers, bandit_insights=bandit_insights)
+    assert "Challenger Sales Framework" in prompt_with_bandit
+    assert "38.5%" in prompt_with_bandit
+    assert "Empirical leader from Bayesian bandit." in prompt_with_bandit
+    assert "[28.0% - 50.0%]" in prompt_with_bandit
+
+
+@pytest.mark.asyncio
+async def test_sales_response_with_promotions():
+    """Verifies that sales response fallback injects matched promotional discounts into opening pitches."""
+    if "OPENAI_API_KEY" in os.environ:
+        del os.environ["OPENAI_API_KEY"]
+
+    customer_packet = {
+        "attributes": ["navy blue windbreaker"],
+        "dwell_time_s": 2.0,
+        "proximity": "1.5m (mid-range)",
+        "distance_m": 1.5,
+        "matched_promos": [
+            {
+                "rule_name": "Spring Flash Sale",
+                "discount_percent": 25.0,
+                "description": "25% off all windbreakers"
+            }
+        ]
+    }
+
+    response = await generate_sales_response("Mock prompt", customer_packet)
+    assert "winter coat" in response
+    assert "Spring Flash Sale" in response
+    assert "25.0% off" in response
 
 
 def test_chunk_text_stream():
