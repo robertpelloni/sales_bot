@@ -209,7 +209,8 @@ class MultiArmedBanditEngine:
         self,
         framework: str,
         dwell_time: Optional[float] = None,
-        distance_m: Optional[float] = None
+        distance_m: Optional[float] = None,
+        persona: Optional[str] = None
     ) -> float:
         """
         Calculates a multiplicative contextual affinity score [0.5, 2.0] for a sales framework
@@ -245,6 +246,17 @@ class MultiArmedBanditEngine:
                 elif framework == "Consultative Problem-Solver":
                     multiplier *= 0.7
 
+        if persona is not None:
+            if "Athletic" in persona or "Commuter" in persona:
+                if framework == "Challenger Sales Framework":
+                    multiplier *= 1.25
+            elif "Deep Evaluator" in persona or "Quality" in persona:
+                if framework == "Consultative Problem-Solver":
+                    multiplier *= 1.3
+            elif "Spontaneous" in persona:
+                if framework == "Pattern Interrupt Cold-Open":
+                    multiplier *= 1.3
+
         return round(multiplier, 2)
 
     def select_contextual(
@@ -252,6 +264,7 @@ class MultiArmedBanditEngine:
         stats: Dict[str, Dict[str, Any]],
         dwell_time: Optional[float] = None,
         distance_m: Optional[float] = None,
+        persona: Optional[str] = None,
         base_method: Optional[str] = None
     ) -> Tuple[str, Dict[str, float]]:
         """
@@ -264,7 +277,9 @@ class MultiArmedBanditEngine:
         affinities: Dict[str, float] = {}
 
         for arm in stats.keys():
-            affinities[arm] = self.calculate_context_affinity(arm, dwell_time=dwell_time, distance_m=distance_m)
+            affinities[arm] = self.calculate_context_affinity(
+                arm, dwell_time=dwell_time, distance_m=distance_m, persona=persona
+            )
 
         best_score = -1.0
         best_arm = self.default_frameworks[0]
@@ -311,7 +326,8 @@ class MultiArmedBanditEngine:
         session: AsyncSession,
         method: Optional[str] = None,
         dwell_time: Optional[float] = None,
-        distance_m: Optional[float] = None
+        distance_m: Optional[float] = None,
+        persona: Optional[str] = None
     ) -> Tuple[str, Dict[str, Any]]:
         """
         Selects the next sales framework to employ based on historical bandit performance.
@@ -321,9 +337,9 @@ class MultiArmedBanditEngine:
         algo = method or self.default_method
         stats = await self.get_framework_performance(session)
 
-        if self.contextual_weighting and (dwell_time is not None or distance_m is not None):
+        if self.contextual_weighting and (dwell_time is not None or distance_m is not None or persona is not None):
             chosen, affinities = self.select_contextual(
-                stats, dwell_time=dwell_time, distance_m=distance_m, base_method=algo
+                stats, dwell_time=dwell_time, distance_m=distance_m, persona=persona, base_method=algo
             )
             # Embed context affinity metrics into response stats for real-time observability
             for arm in stats:

@@ -13,7 +13,8 @@ from llm_client import (
     chunk_text_stream,
     format_multimodal_user_content,
     process_vlm_stream,
-    derive_scarcity_and_urgency
+    derive_scarcity_and_urgency,
+    derive_customer_persona
 )
 
 
@@ -103,7 +104,7 @@ async def test_generate_sales_response():
     # Test athletic / sneakers condition
     customer_packet = {"attributes": ["red sneakers"]}
     response = await generate_sales_response(sys_prompt, customer_packet)
-    assert "athletic" in response
+    assert "SonicStride" in response
 
     # Test default fallback condition
     customer_packet = {"attributes": ["plain yellow hat"]}
@@ -183,6 +184,31 @@ def test_chunk_text_stream():
     assert len(chunks_trailing) == 2
     assert chunks_trailing[0] == "Sentence one."
     assert chunks_trailing[1] == "Sentence two without period"
+
+
+def test_derive_customer_persona():
+    """Verifies that sensory features map accurately into behavioral retail customer personas."""
+    # Athletic persona
+    p1 = derive_customer_persona({"attributes": ["athletic shorts", "running sneakers"]})
+    assert p1["persona"] == "Athletic / Commuter"
+    assert "Footwear" in p1["recommended_category"]
+
+    # Weather traveler persona
+    p2 = derive_customer_persona({"attributes": ["rain jacket", "hoodie"]})
+    assert p2["persona"] == "Weather-Conscious / Urban Traveler"
+    assert "Outerwear" in p2["recommended_category"]
+
+    # Lifestyle browser
+    p3 = derive_customer_persona({"attributes": ["carrying coffee", "tote bag"]})
+    assert p3["persona"] == "Lifestyle / Urban Browser"
+
+    # Deep evaluator (high dwell time)
+    p4 = derive_customer_persona({"attributes": ["formal watch"], "dwell_time_s": 8.5})
+    assert p4["persona"] == "Deep Evaluator / Quality Seeker"
+
+    # Default spontaneous
+    p5 = derive_customer_persona({"attributes": ["plain shirt"], "dwell_time_s": 1.0})
+    assert p5["persona"] == "Spontaneous Shopper"
 
 
 def test_format_multimodal_user_content():

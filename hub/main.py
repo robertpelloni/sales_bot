@@ -538,10 +538,13 @@ async def simulate_detection(
     try:
         framework_stats = await bandit_engine.get_framework_performance(db)
         if framework_selection == "auto":
+            from src.llm_client import derive_customer_persona
+            sim_persona = derive_customer_persona({"attributes": [a.strip() for a in attributes.split(",")], "dwell_time_s": dwell_time_s})
             chosen_fw, _ = await bandit_engine.allocate_next_framework(
                 db,
                 dwell_time=dwell_time_s,
-                distance_m=distance_m
+                distance_m=distance_m,
+                persona=sim_persona.get("persona")
             )
             effective_framework = chosen_fw
         elif framework_selection.strip():
@@ -661,15 +664,17 @@ async def select_ab_framework(
     method: Optional[str] = None,
     dwell_time_s: Optional[float] = None,
     distance_m: Optional[float] = None,
+    persona: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
     username: str = Depends(get_current_username)
 ):
-    """Dynamically samples the optimal sales framework for an incoming customer interaction, supporting vision context."""
+    """Dynamically samples the optimal sales framework for an incoming customer interaction, supporting vision context and persona."""
     chosen_framework, stats = await bandit_engine.allocate_next_framework(
         db,
         method=method,
         dwell_time=dwell_time_s,
-        distance_m=distance_m
+        distance_m=distance_m,
+        persona=persona
     )
     chosen_stats = stats.get(chosen_framework, {})
     return {

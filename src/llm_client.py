@@ -140,6 +140,48 @@ def get_system_config() -> Tuple[Optional[str], str]:
     return api_key, use_mock_vision
 
 
+def derive_customer_persona(customer_packet: Dict[str, Any]) -> Dict[str, str]:
+    """
+    Derives real-time customer persona and product affinity mapping from visual sensory attributes
+    and engagement signals (e.g. dwell time, proximity, apparel traits).
+    Returns a dictionary with 'persona', 'recommended_category', and 'behavioral_tone'.
+    """
+    attributes = [a.lower() for a in customer_packet.get("attributes", [])]
+    attr_text = " ".join(attributes)
+    dwell_time = float(customer_packet.get("dwell_time_s", 0.0) or 0.0)
+
+    if any(k in attr_text for k in ["runner", "sneakers", "athletic", "gym", "sport", "shorts"]):
+        return {
+            "persona": "Athletic / Commuter",
+            "recommended_category": "Footwear & Activewear",
+            "behavioral_tone": "High-energy, performance-focused, metrics and agility driven"
+        }
+    elif any(k in attr_text for k in ["jacket", "coat", "outerwear", "windbreaker", "hoodie", "rain"]):
+        return {
+            "persona": "Weather-Conscious / Urban Traveler",
+            "recommended_category": "Outerwear & Weather-Protection",
+            "behavioral_tone": "Comfort-oriented, technical fabric durability, outdoor readiness"
+        }
+    elif any(k in attr_text for k in ["coffee", "cup", "drink", "backpack", "tote", "bag"]):
+        return {
+            "persona": "Lifestyle / Urban Browser",
+            "recommended_category": "Daily Carry & Lifestyle Accessories",
+            "behavioral_tone": "Approachable, conversational, casual aesthetic appreciation"
+        }
+    elif dwell_time >= 5.0:
+        return {
+            "persona": "Deep Evaluator / Quality Seeker",
+            "recommended_category": "Flagship Essentials",
+            "behavioral_tone": "Consultative, value-driven, attention to fine craftsmanship and warranty"
+        }
+    else:
+        return {
+            "persona": "Spontaneous Shopper",
+            "recommended_category": "Trending Showcase",
+            "behavioral_tone": "Intriguing, charismatic, direct pattern-interrupt opening"
+        }
+
+
 def derive_scarcity_and_urgency(customer_packet: Dict[str, Any]) -> Tuple[str, str]:
     """
     Derives real-time scarcity and urgency modifiers from dwell time and spatial proximity data.
@@ -206,10 +248,14 @@ def format_multimodal_user_content(
     dwell_time_s = customer_packet.get("dwell_time_s", 0.0)
 
     urgency_level, scarcity_directive = derive_scarcity_and_urgency(customer_packet)
+    persona_data = derive_customer_persona(customer_packet)
 
     prompt_text = (
         f"A customer is in the interaction zone (proximity: {proximity}, distance: {distance_m}m, dwell_time: {dwell_time_s}s).\n"
         f"Detected visual features: {attributes_str}.\n"
+        f"Inferred Customer Persona: {persona_data['persona']}\n"
+        f"Recommended Product Affinity: {persona_data['recommended_category']}\n"
+        f"Behavioral Tone: {persona_data['behavioral_tone']}\n"
         f"Dynamic Urgency Level: {urgency_level}\n"
         f"Behavioral Scarcity Directive: {scarcity_directive}\n"
     )
@@ -276,10 +322,11 @@ async def generate_sales_response(sys_prompt: str, customer_packet: Dict[str, An
         except Exception as e:
             print(f"Frontier VLM API Error (falling back to local mock): {e}")
 
-    # Fallback heuristic sales psychology logic with dynamic scarcity, promotions, & urgency scaling
+    # Fallback heuristic sales psychology logic with dynamic scarcity, persona tailoring, & promotions
     attributes = customer_packet.get("attributes", [])
     lower_attrs = " ".join(attributes).lower()
     urgency_level, _ = derive_scarcity_and_urgency(customer_packet)
+    persona_data = derive_customer_persona(customer_packet)
 
     scarcity_suffix = ""
     if urgency_level == "CRITICAL_SCARCITY":
@@ -295,12 +342,14 @@ async def generate_sales_response(sys_prompt: str, customer_packet: Dict[str, An
         top_promo = matched_promos[0]
         promo_hook = f" Plus, your visit qualifies for our {top_promo.get('rule_name')} offering {top_promo.get('discount_percent')}% off today!"
 
-    if any(k in lower_attrs for k in ["coat", "jacket", "windbreaker", "warm-toned"]):
+    if persona_data["persona"] == "Athletic / Commuter":
+        pitch = "Hey there, love the athletic look—if you're out tracking steps today, you need to check out our newest ultralight SonicStride runners."
+    elif persona_data["persona"] == "Weather-Conscious / Urban Traveler":
         pitch = "That's a serious winter coat. You look like you're actually ready for this wind outside! Come feel how incredibly lightweight this fleece option is right here."
-    elif any(k in lower_attrs for k in ["coffee", "cup", "drink"]):
-        pitch = "Hey, looks like you've got your coffee fuel for the day! While you're at it, check out our new arrivals."
-    elif any(k in lower_attrs for k in ["sneakers", "athletic", "runner"]):
-        pitch = "Hey there, love the athletic look—if you're out tracking steps today, you need to check out our newest ultralight gear."
+    elif persona_data["persona"] == "Lifestyle / Urban Browser":
+        pitch = "Hey, looks like you've got your coffee fuel for the day! While you're exploring, let me show you our featured accessories."
+    elif persona_data["persona"] == "Deep Evaluator / Quality Seeker":
+        pitch = "I see you appreciate the craftsmanship. Take a closer look at the hydrophobic nanopore weave—built to last a lifetime."
     else:
         pitch = "Hey there! If you have a minute, I'd love to show you something that just arrived in store."
 

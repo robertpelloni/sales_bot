@@ -125,6 +125,13 @@ def test_calculate_context_affinity():
     long_dwell_consultative = engine.calculate_context_affinity("Consultative Problem-Solver", dwell_time=15.0, distance_m=1.5)
     assert long_dwell_consultative >= 1.5
 
+    # Persona affinity boosts
+    athletic_challenger = engine.calculate_context_affinity("Challenger Sales Framework", persona="Athletic / Commuter")
+    assert athletic_challenger >= 1.25
+
+    quality_consultative = engine.calculate_context_affinity("Consultative Problem-Solver", persona="Deep Evaluator / Quality Seeker")
+    assert quality_consultative >= 1.3
+
 
 def test_select_contextual_weighting():
     engine = MultiArmedBanditEngine(contextual_weighting=True)
