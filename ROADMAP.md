@@ -1,87 +1,22 @@
 # ROADMAP
+- Phase 1: Hardware Integration & Basic Pipeline Validation (Completed).
+- Phase 2: Behavioral Optimization and Prompt Fine-tuning (Completed).
+- Phase 3: Dashboard creation for vendors to manage inventory (Completed).
+- Phase 4: Production deployment on embedded units with hardware-accelerated local inference.
 
-- Phase 1: Initial implementation of Sirens Project (Completed 0.1.1)
-  - Edge and Hub architecture setup
-  - Mock YOLOv11 and Piper TTS integration via stdin
-  - Configuration wiring and Hub dashboard implementation
+### Phase 5: Privacy, Compliance, and User Agency Enhancements (Upcoming)
+To ensure the system aligns with ethical guidelines and strict privacy laws (GDPR/CCPA), the following features will be prioritized in the next iteration:
 
-- Phase 2: Production APIs & Real Vision (Completed 0.2.0)
-  - Replace mock `generate_sales_response` with a true Frontier VLM integration (e.g. OpenAI/Gemini SDKs).
-  - Transition `start_vision_loop` from a 10-iteration simulated loop to capturing actual video device frames (e.g., `/dev/video0`).
-  - Connect configuration dashboard to save API keys to `.env` or secure config for LLM usage.
+1. **Explicit Opt-in Mechanism (Wake Word Integration):**
+   - Replace unconsented proximity triggering with an explicit audio opt-in.
+   - Integrate a lightweight, local wake-word engine (e.g., Porcupine or Snowboy). The system will remain entirely passive until a user actively initiates a session by saying "Hey Sirens."
 
-- Phase 3: CRM & Engagement Tracking (Completed 0.3.0)
-  - Implement SQLite interaction persistence and visual analytics.
-  - Expose API endpoints for marking leads and recording follow-ups.
-  - Complete integration testing for the VLM/Redis data flow simulation via Playwright and Pytest.
+2. **Enhanced Accessibility UI:**
+   - Develop a visual companion display (e.g., using Pygame or a web dashboard) that provides real-time subtitles of the TTS output, aiding users who are hearing impaired or in excessively noisy environments.
 
-- Phase 4: Hardware Deployment (Completed 0.4.0)
-  - Refine PipeWire/ALSA configurations for zero-latency audio streaming.
-  - Profile tracking performance on Pi 5 / Coral Edge TPU hardware modules.
+3. **Strict Data Anonymization:**
+   - Remove any facial embedding or repeat customer tracking features.
+   - Ensure all visual attributes extracted by YOLO are immediately discarded from memory after the current, isolated session concludes.
 
-- Phase 5: Feedback & Advanced Analytics (Completed 0.5.0)
-  - Incorporate text-to-speech latency performance logging into the database.
-  - Develop user interaction feedback mechanisms.
-
-- Phase 6: Unified Dashboard, System Tray & Lifecycle Automation (Completed 0.6.0)
-  - Redesign dashboard into a high-value single-page grid layout with comprehensive tooltips and status bar.
-  - Add desktop system tray controller (`src/tray_app.py`) with process management and graceful shutdown.
-  - Expose `/api/status` and `/api/server/shutdown` endpoints.
-  - Provide unified server management scripts in `scripts/`.
-
-- Phase 7: Real-Time WebSocket Streaming & Dynamic Feed (Completed 0.7.0)
-  - Real-time duplex WebSocket stream (`/ws/events`) with `ConnectionManager`.
-  - Push new customer interaction events directly to the dashboard DOM without polling.
-  - Visual Playwright E2E verification of live feed card insertion.
-
-- Phase 8: Vision Feature Extraction & Multimodal Frontier VLM Integration (Completed 0.8.0)
-  - Calibrated bounding box proximity estimation and 1.5s dwell time locking.
-  - Extracted dominant apparel color heuristics and packaged metadata with base64 JPEG crops.
-  - Integrated multimodal OpenAI/Gemini chat completions with sentence-level stream chunking for Piper TTS.
-
-- Phase 9: Multi-Armed Bandit Dynamic A/B Sales Testing Engine (Completed 0.9.0)
-  - Autonomous strategy allocation using Thompson Sampling (Beta priors) and $\epsilon$-greedy exploration.
-  - Integration with CRM conversion events (leads flagged, feedback ratings).
-  - High-value dashboard card with live arm win rates and parameter introspection.
-  - REST endpoints (`/api/ab/allocations`, `/api/ab/select_framework`) for dynamic kiosk querying.
-
-- Phase 10: Edge Hardware Acceleration & Coral Edge TPU Support (Completed 1.0.0)
-  - Support Coral Edge TPU TFLite runtime models (`yolo11n_edgetpu.tflite`) via Ultralytics backend and `tflite_runtime.interpreter.Interpreter` delegate initialization.
-  - Hardened MockYOLO fallback for zero-dependency CI execution.
-
-- Phase 11: Dynamic Store Promotions & Retail Prompt Synthesis (Completed 1.1.0)
-  - Dynamic store promotions backend engine with discount rules, threshold conditions, and PRG UI forms.
-  - Autonomous LLM prompt synthesis of active promotional campaigns into cold-open and dwell-time pitches.
-  - Interactive promotions management panel in the consolidated dashboard.
-
-- Phase 12: CRM Leads CSV Export & Real-Time Analytics Reporting (Completed 1.2.0)
-  - RFC 4180 streaming CSV export for qualified leads and full interaction history.
-  - Aggregated analytics summary endpoint (`GET /api/analytics/summary`) providing conversion rates and averages.
-  - Header export action triggers directly embedded in the consolidated Live CRM Feed card.
-
-- Phase 13: Multi-Armed Bandit Algorithmic Refinement & Dynamic Routing (Completed 1.3.0)
-  - Advanced bandit algorithms: Upper Confidence Bound (UCB1) and Epsilon-Greedy with geometric exploration decay.
-  - 95% Wilson confidence intervals tracking empirical conversion rates.
-  - Algorithmic hyperparameter configuration (`POST /api/ab/config`) and prior state reset (`POST /api/ab/reset`).
-  - Simulation dynamic framework auto-allocation routing.
-
-- Phase 14: Contextual Multi-Armed Bandit Personalization & Sensory Vision Routing (Completed 1.4.0)
-  - Contextual arm affinity engine (`calculate_context_affinity`, `select_contextual`) conditioning framework scores on real-time vision sensory attributes.
-  - Distance heuristics: close proximity boosts Assumptive Close & Challenger; far distance boosts Pattern Interrupt.
-  - Dwell heuristics: extended dwell boosts Consultative Problem-Solver; fleeting glance boosts Pattern Interrupt.
-  - Dashboard UI controls for toggling vision context affinity weighting.
-
-- Phase 15: Outbound CRM Webhook Relay & Cryptographic Dispatch (Completed 1.5.0)
-  - Asynchronous background HTTP webhook dispatch engine (`WebhookManager`) connecting external enterprise CRMs (Salesforce, HubSpot, Zapier).
-  - HMAC-SHA256 signature verification (`X-Sirens-Signature`) with timestamp headers over payload bodies.
-  - Granular event filtering (`NEW_INTERACTION`, `LEAD_QUALIFIED`, `FEEDBACK_RECORDED`).
-  - Interactive dashboard configuration card with real-time test dispatch triggering.
-
-- Phase 16: Dynamic Promotional Engine & Multi-Armed Bandit VLM Synthesis (Completed 1.5.1)
-  - Real-time sensory condition matching (`match_promotions`) evaluating customer dwell time, distance, and apparel keywords against store promotional incentives.
-  - Empirical Bayesian conversion statistics (win rates and 95% Wilson confidence intervals) synthesized into VLM prompts.
-  - Sensory urgency and scarcity pitch tailoring combining promotional discounts and inventory limits.
-
-- Phase 17: Multi-Kiosk Fleet Synchronization & Distributed Mesh (Planned 1.6.0)
-  - Distributed SQLite sync via Litestream or Raft-backed Redis cluster across multi-kiosk storefront networks.
-  - Cross-kiosk customer trajectory handover with privacy-preserving appearance embeddings.
+4. **Transparent System Operations:**
+   - Add visual indicators (e.g., LED lights) to clearly show when the microphone is active and when the system is processing data.

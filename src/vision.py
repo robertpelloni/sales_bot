@@ -1,293 +1,267 @@
-"""
-Project Sirens - Core Vision Processing & Feature Extractor
-Processes camera feed using YOLO tracking, calculates customer proximity from bounding boxes,
-tracks dwell time (>1.5s lock threshold), extracts visual attribute heuristics (dominant colors),
-and packages structured metadata alongside compressed context frames for the Frontier VLM.
-"""
+from src.logger import get_logger
 
-import asyncio
-import time
-from typing import Any, Dict, List, Optional, Tuple
-
+logger = get_logger(__name__)
 import cv2
+import json
+import base64
+import time
+import asyncio
+import random
+import numpy as np
 import redis.asyncio as redis
+import os
+from collections import defaultdict
 from ultralytics import YOLO
 
-class MockYOLO:
-    def __init__(self, model_name):
-        self.model_name = model_name
+# Connect to Redis
+r = redis.Redis(host=os.environ.get("REDIS_HOST", "localhost"), port=6379, db=0)
 
-    def track(self, frame, persist=True):
-        class MockResult:
-            def __init__(self):
-                self.boxes = type(
-                    "Boxes",
-                    (),
-                    {
-                        "id": [1],
-                        "xyxy": [[100, 80, 260, 420]],
-                        "conf": [0.92],
-                        "cls": [0],
-                    },
+NODE_ID = os.environ.get("NODE_ID", "kiosk_default")
+
+# Load YOLO model
+model = YOLO("yolov11n.pt")
+
+# Target properties
+DWELL_TIME_THRESHOLD = 1.5
+MIN_CONFIDENCE = 0.5
+MIN_PROXIMITY_RATIO = 0.6  # Bounding box must occupy 60% of frame height
+TRACK_HISTORY = defaultdict(lambda: [])
+START_TIMES = {}
+
+try:
+    import face_recognition
+
+    FACE_REC_AVAILABLE = True
+except ImportError:
+    FACE_REC_AVAILABLE = False
+    logger.info(
+        "[Vision] face_recognition library not found. Falling back to mocked embeddings."
+    )
+
+
+class FaceEmbedding:
+    @staticmethod
+    def get_embedding(frame):
+        if FACE_REC_AVAILABLE:
+            # Convert BGR to RGB
+            rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            # Find face locations
+            face_locations = face_recognition.face_locations(rgb_frame)
+            if face_locations:
+                # Get the embedding for the first face found
+                encodings = face_recognition.face_encodings(rgb_frame, face_locations)
+                if encodings:
+                    return encodings[0].tolist()
+            return None
+        else:
+            # Return a mock 128D embedding vector for testing environments
+            return np.random.rand(128).tolist()
+
+    @staticmethod
+    def is_match(embed1, embed2, threshold=0.6):
+        if not embed1 or not embed2:
+            return False
+
+        if FACE_REC_AVAILABLE:
+            # face_recognition uses a slightly different distance calc natively but we can use np
+            dist = np.linalg.norm(np.array(embed1) - np.array(embed2))
+            return dist < threshold
+        else:
+            return False
+
+
+def capture_and_track(cap, process_frame=True):
+    success, frame = cap.read()
+    if not success:
+        return False, None, None
+
+    results = None
+    if process_frame:
+        # Only run YOLO tracking on designated frames to save CPU
+        results = model.track(
+            frame, persist=True, classes=[0], conf=MIN_CONFIDENCE
+        )  # class 0 is person
+
+    return True, frame, results
+
+
+def get_gstreamer_pipeline():
+    # Raspberry Pi specific hardware-accelerated libcamera pipeline
+    return (
+        "libcamerasrc ! "
+        "video/x-raw, width=640, height=480, framerate=30/1 ! "
+        "videoconvert ! appsink"
+    )
+
+
+async def check_repeat_customer(embedding):
+    """
+    Checks the Redis cache of known customer embeddings asynchronously using batches.
+    If a match is found, returns True. Otherwise, saves the new embedding and returns False.
+    """
+    try:
+        if embedding is None:
+            return False
+
+        # Use SCAN to iterate without blocking redis, though keys is small usually.
+        cursor = b"0"
+        while cursor:
+            cursor, keys = await r.scan(
+                cursor=cursor, match="customer_embed:*", count=100
+            )
+
+            # Redis SCAN can return 0 keys with a valid cursor, only process if keys exist
+            if keys:
+                # Fetch batch of embeddings
+                stored_embed_strs = await r.mget(keys)
+
+                for stored_embed_str in stored_embed_strs:
+                    if stored_embed_str:
+                        stored_embed = json.loads(stored_embed_str.decode("utf-8"))
+                        if FaceEmbedding.is_match(embedding, stored_embed):
+                            return True
+
+        # No match found, save new customer securely with INCR to avoid race conditions
+        new_id = await r.incr("customer_id_counter")
+        # Set an expiration so the database doesn't grow unbounded in production (e.g. 7 days)
+        await r.set(f"customer_embed:{new_id}", json.dumps(embedding), ex=604800)
+        return False
+    except Exception as e:
+        logger.info(f"[Vision] Error checking repeat customer: {e}")
+        return False
+
+
+def open_camera(video_source):
+    # Attempt hardware acceleration using GStreamer if a numeric ID is given
+    if isinstance(video_source, int):
+        cap = cv2.VideoCapture(get_gstreamer_pipeline(), cv2.CAP_GSTREAMER)
+        # Fallback to standard V4L2 if GStreamer fails (e.g. testing environments)
+        if not cap.isOpened():
+            logger.info(
+                "[Vision] GStreamer failed. Falling back to standard V4L2 capture."
+            )
+            cap = cv2.VideoCapture(video_source)
+    else:
+        # E.g. reading from a file or mock string
+        cap = cv2.VideoCapture(video_source)
+    return cap
+
+
+async def process_video_stream(video_source=0):
+    cap = open_camera(video_source)
+
+    # Frame skip optimization (process every Nth frame)
+    frame_count = 0
+    PROCESS_EVERY_N_FRAMES = 3
+
+    try:
+        while True:
+            if not cap.isOpened():
+                logger.info(
+                    "[Vision] Camera disconnected. Attempting to reconnect in 5 seconds..."
                 )
+                await asyncio.sleep(5)
+                cap = open_camera(video_source)
+                continue
 
-        return [MockResult()]
+            frame_count += 1
+            process_this_frame = frame_count % PROCESS_EVERY_N_FRAMES == 0
 
-
-def load_vision_model(
-    model_path: str = "yolo11n_edgetpu.tflite",
-    pytorch_fallback: str = "yolo11n.pt",
-) -> Tuple[Any, str]:
-    """
-    Loads edge vision models preferentially optimized for Coral Edge TPU (TFLite)
-    to achieve 30+ FPS and prevent thermal throttling on Raspberry Pi 5.
-
-    Falls back to standard PyTorch format or MockYOLO if model files or drivers are absent.
-    Returns a tuple of (model_instance, model_type_string).
-    """
-    if os.path.exists(model_path) and YOLO is not None:
-        try:
-            print(f"Loading Coral Edge TPU optimized model: {model_path}")
-            model = YOLO(model_path)
-            return model, "coral_edgetpu"
-        except Exception as e:
-            print(f"Warning: Failed to initialize Coral Edge TPU model: {e}")
-
-    if os.path.exists(pytorch_fallback) and YOLO is not None:
-        try:
-            print(f"Loading standard PyTorch model: {pytorch_fallback}")
-            model = YOLO(pytorch_fallback)
-            return model, "pytorch"
-        except Exception as e:
-            print(f"Warning: Failed to initialize PyTorch model: {e}")
-
-    print("Falling back to MockYOLO tracker.")
-    return MockYOLO(model_name=pytorch_fallback), "mock"
-
-
-def calculate_proximity(bbox: List[float], frame_height: int = 480) -> Tuple[float, str]:
-    """
-    Calculates estimated customer distance (meters) based on bounding box height relative
-    to frame height. An average human height (~1.7m) filling 70% of frame corresponds to ~1.2m distance.
-    Returns estimated distance in meters and proximity descriptor string.
-    """
-    if len(bbox) < 4:
-        return 2.5, "far"
-
-    y1, y2 = bbox[1], bbox[3]
-    box_height = max(1.0, float(y2 - y1))
-    ratio = box_height / max(1.0, float(frame_height))
-
-    # Inverse proportional distance model calibrated for in-store focal distance
-    if ratio >= 0.65:
-        distance = round(max(0.8, 1.2 * (0.7 / ratio)), 2)
-        desc = f"{distance}m (close)"
-    elif ratio >= 0.35:
-        distance = round(1.2 * (0.7 / ratio), 2)
-        desc = f"{distance}m (mid-range)"
-    else:
-        distance = round(1.2 * (0.7 / ratio), 2)
-        desc = f"{distance}m (far)"
-
-    return distance, desc
-
-
-def extract_visual_attributes(crop_img: np.ndarray) -> List[str]:
-    """
-    Analyzes cropped target frame to extract dominant color heuristics and apparel traits
-    without violating privacy directives.
-    """
-    if crop_img is None or crop_img.size == 0:
-        return ["casual attire", "customer"]
-
-    try:
-        # Resize crop for rapid analysis
-        small = cv2.resize(crop_img, (64, 64))
-        hsv = cv2.cvtColor(small, cv2.COLOR_BGR2HSV)
-
-        # Separate upper torso (top 60% of crop) to identify shirt/coat colors
-        h_crop, w_crop = small.shape[:2]
-        torso = hsv[: int(h_crop * 0.6), :]
-
-        mean_h = np.mean(torso[:, :, 0])
-        mean_s = np.mean(torso[:, :, 1])
-        mean_v = np.mean(torso[:, :, 2])
-
-        attributes = []
-        if mean_v < 60:
-            attributes.append("dark jacket or coat")
-        elif mean_s < 45 and mean_v > 180:
-            attributes.append("light colored apparel")
-        elif 95 <= mean_h <= 135 and mean_s > 50:
-            attributes.append("navy blue or blue jacket")
-        elif (mean_h <= 10 or mean_h >= 170) and mean_s > 60:
-            attributes.append("red or warm-toned outerwear")
-        elif 35 <= mean_h <= 85 and mean_s > 50:
-            attributes.append("green outerwear")
-        else:
-            attributes.append("stylish casual attire")
-
-        attributes.append("approaching customer")
-        return attributes
-    except Exception:
-        return ["casual attire", "customer"]
-
-
-def is_target_dwelling(
-    first_seen: float,
-    current_time: float,
-    threshold_seconds: float = 1.5,
-) -> bool:
-    """Checks if target has dwelled within proximity threshold for longer than the required duration."""
-    return (current_time - first_seen) >= threshold_seconds
-
-
-async def start_vision_loop(redis_url: str):
-    """
-    Main vision execution loop: tracks objects, applies 1.5s dwell lock,
-    extracts features, packages metadata with base64 JPEG, and publishes to Redis.
-    """
-    r = redis.from_url(redis_url)
-    print("Vision system initializing hardware bindings...")
-
-    from llm_client import get_system_config
-    import base64
-    _, use_mock_vision_str = get_system_config()
-    use_mock_vision = use_mock_vision_str.lower() in ("true", "1", "yes")
-
-    try:
-        # Phase 4 Hardware Integration:
-        # Load the Coral Edge TPU optimized TFLite model instead of the standard PyTorch model
-        # This allows 30+ FPS tracking on the Raspberry Pi 5 without thermal throttling.
-        # Fallback to standard PyTorch format if Coral model is unavailable.
-        if os.path.exists("yolo11n_edgetpu.tflite"):
-            print("Loaded Coral Edge TPU YOLOv11n model.")
-            model = YOLO("yolo11n_edgetpu.tflite")
-        else:
-            print("Loaded Standard PyTorch YOLOv11n model.")
-            model = YOLO("yolo11n.pt")
-    except Exception:
-        print("Falling back to MockYOLO")
-        model = MockYOLO("yolo11n.pt")
-        use_mock_vision = True
-
-    print("Vision system started.")
-
-    tracked_objects: Dict[int, Dict[str, Any]] = {}
-    last_cleanup_time = time.time()
-
-    if use_mock_vision:
-        # Mock vision loop simulating customer approach and dwell
-        for i in range(10):
-            await asyncio.sleep(1)
-            current_time = time.time()
-
-            if current_time - last_cleanup_time > 60:
-                tracked_objects.clear()
-                last_cleanup_time = current_time
-                print("Vision: Cleared bounding box memory buffers (Privacy Directive).")
-
-            obj_id = 1
-            mock_bbox = [100, 80, 260, 420]
-            dist, prox_desc = calculate_proximity(mock_bbox, frame_height=480)
-
-            if obj_id not in tracked_objects:
-                tracked_objects[obj_id] = {"first_seen": current_time, "triggered": False}
-
-            dwell_duration = round(current_time - tracked_objects[obj_id]["first_seen"], 2)
-            if is_target_dwelling(tracked_objects[obj_id]["first_seen"], current_time, 1.5):
-                if not tracked_objects[obj_id].get("triggered", False):
-                    import numpy as np
-                    dummy_frame = np.zeros((480, 640, 3), dtype=np.uint8)
-                    # Draw a mock blue rectangle simulating jacket
-                    cv2.rectangle(dummy_frame, (100, 80), (260, 420), (180, 50, 20), -1)
-
-                    crop = dummy_frame[80:420, 100:260]
-                    attrs = extract_visual_attributes(crop)
-                    # Include standard keywords for sales prompts
-                    if "navy blue or blue jacket" in attrs:
-                        attrs.extend(["windbreaker", "holding coffee"])
-
-                    _, buffer = cv2.imencode(".jpg", dummy_frame, [int(cv2.IMWRITE_JPEG_QUALITY), 50])
-                    encoded_frame = base64.b64encode(buffer).decode("utf-8")
-
-                    metadata_packet = {
-                        "id": obj_id,
-                        "proximity": prox_desc,
-                        "distance_m": dist,
-                        "dwell_time_s": dwell_duration,
-                        "attributes": attrs,
-                        "frame_data": encoded_frame,
-                    }
-
-                    print(f"Vision: Target locked (ID {obj_id}, dist={dist}m). Publishing CUSTOMER_DETECTED to Redis.")
-                    await r.publish("CUSTOMER_DETECTED", json.dumps(metadata_packet))
-                    tracked_objects[obj_id]["triggered"] = True
-    else:
-        # Real hardware vision loop using cv2.VideoCapture
-        cap = cv2.VideoCapture(0)
-
-        while cap.isOpened():
-            success, frame = cap.read()
+            success, frame, results = await asyncio.to_thread(
+                capture_and_track, cap, process_this_frame
+            )
             if not success:
-                break
+                logger.info(
+                    "[Vision] Failed to read frame. Hardware may have crashed. Reconnecting..."
+                )
+                cap.release()
+                continue
 
-            # Simulate non-blocking sleep
-            await asyncio.sleep(0.01)
+            if not process_this_frame or results is None:
+                await asyncio.sleep(0.005)
+                continue
 
-            current_time = time.time()
+            if results[0].boxes.id is not None:
+                boxes = results[0].boxes.xyxy.cpu()
+                track_ids = results[0].boxes.id.int().cpu().tolist()
 
-            # Privacy Directive
-            if current_time - last_cleanup_time > 60:
-                tracked_objects.clear()
-                last_cleanup_time = current_time
-                print("Vision: Cleared bounding box memory buffers (Privacy Directive).")
+                for box, track_id in zip(boxes, track_ids):
+                    x1, y1, x2, y2 = map(int, box)
+                    box_height = y2 - y1
+                    frame_height = frame.shape[0]
 
-            results = model.track(frame, persist=True)
+                    # Proximity calculation
+                    proximity_ratio = box_height / float(frame_height)
 
-            if (
-                results
-                and len(results) > 0
-                and hasattr(results[0], "boxes")
-                and results[0].boxes
-                and hasattr(results[0].boxes, "id")
-                and results[0].boxes.id is not None
-            ):
-                h, w = frame.shape[:2]
-                for box, obj_id_tensor in zip(results[0].boxes, results[0].boxes.id):
-                    obj_id = int(obj_id_tensor.item())
-                    coords = box.xyxy[0].tolist() if hasattr(box, "xyxy") else [0, 0, 100, 100]
-                    dist, prox_desc = calculate_proximity(coords, frame_height=h)
+                    # Check for dwell time and proximity
+                    current_time = time.time()
+                    if track_id not in START_TIMES:
+                        if proximity_ratio >= MIN_PROXIMITY_RATIO:
+                            START_TIMES[track_id] = current_time
+                    elif current_time - START_TIMES[track_id] >= DWELL_TIME_THRESHOLD:
+                        if proximity_ratio < MIN_PROXIMITY_RATIO:
+                            # Reset tracking if they back away
+                            del START_TIMES[track_id]
+                            continue
 
-                    if obj_id not in tracked_objects:
-                        tracked_objects[obj_id] = {"first_seen": current_time, "triggered": False}
+                        # Capture the target
+                        cropped_frame = frame[
+                            max(0, y1) : min(frame.shape[0], y2),
+                            max(0, x1) : min(frame.shape[1], x2),
+                        ]
 
-                    dwell_duration = round(current_time - tracked_objects[obj_id]["first_seen"], 2)
-                    # Check if customer has dwelled within frame for > 1.5s and is within close range
-                    if is_target_dwelling(tracked_objects[obj_id]["first_seen"], current_time, 1.5):
-                        if not tracked_objects[obj_id].get("triggered", False):
-                            x1, y1, x2, y2 = [max(0, int(c)) for c in coords]
-                            crop = frame[y1:y2, x1:x2]
-                            attrs = extract_visual_attributes(crop)
+                        if cropped_frame.size > 0:
+                            # Encode image as JPEG
+                            _, buffer = cv2.imencode(
+                                ".jpg",
+                                cropped_frame,
+                                [int(cv2.IMWRITE_JPEG_QUALITY), 70],
+                            )
+                            img_str = base64.b64encode(buffer).decode("utf-8")
 
-                            _, buffer = cv2.imencode(".jpg", frame, [int(cv2.IMWRITE_JPEG_QUALITY), 50])
-                            encoded_frame = base64.b64encode(buffer).decode("utf-8")
+                            # Assign A/B Testing Strategy
+                            strategy = (
+                                "A_AGGRESSIVE"
+                                if random.random() > 0.5
+                                else "B_EMPATHETIC"
+                            )
 
-                            # In a full implementation, attributes would be extracted dynamically from the bounding box
-                            metadata_packet = {
-                                "id": obj_id,
-                                "proximity": prox_desc,
-                                "distance_m": dist,
-                                "dwell_time_s": dwell_duration,
-                                "attributes": attrs,
-                                "frame_data": encoded_frame,
+                            # Process Facial Embedding to check for Repeat Customer
+                            face_embedding = FaceEmbedding.get_embedding(cropped_frame)
+                            is_repeat = await check_repeat_customer(face_embedding)
+
+                            # Extract pseudo-metadata
+                            metadata = {
+                                "id": track_id,
+                                "attributes": [
+                                    "a customer standing nearby"
+                                ],  # In real scenario, extract clothing colors etc.
+                                "strategy": strategy,
+                                "is_repeat_customer": is_repeat,
+                                "node_id": NODE_ID,
                             }
 
-                            print(f"Vision: Detected live customer ID {obj_id} (prox={prox_desc}). Publishing to Redis.")
-                            await r.publish("CUSTOMER_DETECTED", json.dumps(metadata_packet))
-                            tracked_objects[obj_id]["triggered"] = True
+                            payload = {"metadata": metadata, "image_b64": img_str}
 
+                            # Emit event on NODE specific channel
+                            await r.publish(
+                                f"CUSTOMER_DETECTED:{NODE_ID}", json.dumps(payload)
+                            )
+                            logger.info(
+                                f"Customer {track_id} locked. Triggering event on {NODE_ID}. Repeat: {is_repeat}"
+                            )
+
+                            # Reset tracking to avoid spamming
+                            START_TIMES[track_id] = current_time + 60  # Cooldown
+
+            await asyncio.sleep(0.01)  # Small sleep to avoid blocking
+    except asyncio.CancelledError:
+        logger.info("[Vision] Stream cancelled.")
+    finally:
+        logger.info("[Vision] Releasing camera hardware.")
         cap.release()
+        cv2.destroyAllWindows()
 
-    await r.aclose()
-    print("Vision loop ended.")
+
+if __name__ == "__main__":
+    asyncio.run(process_video_stream())

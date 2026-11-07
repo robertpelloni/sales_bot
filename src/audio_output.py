@@ -1,52 +1,58 @@
+from src.logger import get_logger
+
+logger = get_logger(__name__)
 import asyncio
+import redis.asyncio as redis
+import subprocess
 import os
-import time
 
-async def play_audio_chunk(text_chunk: str):
-    if not text_chunk:
-        return
+r = redis.Redis(host=os.environ.get("REDIS_HOST", "localhost"), port=6379, db=0)
 
-    print(f"Audio Output: Piping '{text_chunk}' to Piper TTS via stdin...")
+NODE_ID = os.environ.get("NODE_ID", "kiosk_default")
 
-    # Check if we are running in hardware mode or mock mode based on env vars
-    # A true deployment relies on Piper TTS binaries built for ARM64/Pi5 and ALSA.
-    use_mock = os.getenv("USE_MOCK_VISION", "True").lower() == "true"
 
-    if use_mock:
-        command = ["cat"]
-    else:
-        # Standard Piper invocation utilizing aplay for raw hardware audio out
-        # Using a fast ONNX model like en_US-lessac-high
-        command = ["sh", "-c", "vendor/piper/piper --model en_US-lessac-high.onnx --output_raw | aplay -r 22050 -f S16_LE -t raw -"]
-
-    start_time = time.time()
+async def process_audio_chunks():
     try:
-        process = await asyncio.create_subprocess_exec(
-            *command,
-            stdin=asyncio.subprocess.PIPE,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
-        )
-        stdout, stderr = await process.communicate(input=text_chunk.encode('utf-8'))
+        pubsub = r.pubsub()
+        await pubsub.subscribe(f"AUDIO_CHUNK_READY:{NODE_ID}")
+        logger.info(f"Listening for audio chunks on node {NODE_ID}...")
 
-        end_time = time.time()
-        latency_ms = int((end_time - start_time) * 1000)
+        PIPER_EXEC = "vendor/piper/piper"
+        MODEL = "en_US-lessac-medium.onnx"
 
-        if process.returncode == 0:
-            if use_mock:
-                print(f"Audio Output (Mocked Success): {stdout.decode('utf-8').strip()} [{latency_ms}ms]")
-            else:
-                print(f"Audio Output (Hardware Success) [{latency_ms}ms].")
+        # Simple check if binary exists
+        piper_available = os.path.isfile(PIPER_EXEC)
 
-            # Log TTS latency to Redis to pass back to the hub CRM
-            import redis.asyncio as redis
-            redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
-            r = redis.from_url(redis_url)
-            await r.publish("TTS_LATENCY_METRIC", str(latency_ms))
-            await r.aclose()
+        async for message in pubsub.listen():
+            if message["type"] == "message":
+                chunk = message["data"].decode("utf-8")
+                logger.info(f"[Audio Output] Speaking: {chunk}")
 
-        else:
-            print(f"Audio Output Error: {stderr.decode('utf-8')}")
+                if piper_available:
+                    # Pipe string directly into piper and into aplay for instant playback securely
+                    try:
+                        # Use a shell with shlex quoting to prevent injection
+                        import shlex
 
-    except Exception as e:
-        print(f"Audio Output Execution failed: {e}")
+                        safe_chunk = shlex.quote(chunk)
+                        command = f"echo {safe_chunk} | {PIPER_EXEC} --model {MODEL} --output_file - | aplay -q"
+
+                        process = await asyncio.create_subprocess_shell(
+                            command,
+                            stdout=asyncio.subprocess.PIPE,
+                            stderr=asyncio.subprocess.PIPE,
+                        )
+                        await process.communicate()
+                    except Exception as e:
+                        logger.info(f"[Audio Output] Error running piper: {e}")
+                else:
+                    # Fallback to simple print if piper is not built yet
+                    pass
+    except asyncio.CancelledError:
+        logger.info(f"[Audio Output] Cancelled for node {NODE_ID}.")
+    finally:
+        await r.aclose()
+
+
+if __name__ == "__main__":
+    asyncio.run(process_audio_chunks())

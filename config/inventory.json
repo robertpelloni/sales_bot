@@ -1,39 +1,23 @@
 {
-  "store_name": "Project Sirens Flagship Store",
+  "store_name": "Apex Tech Boutique",
   "items": [
     {
-      "product_name": "AeroFoam Active Jacket",
-      "price_usd": 129.99,
+      "product_name": "AeroFoam Noise-Canceling Headphones",
+      "price_usd": 180.00,
       "unique_selling_points": [
-        "Hydrophobic nanopore shell",
-        "Ultralight thermal insulation",
-        "Reflective night-commuter trim"
+        "Hybrid Active Noise Cancellation blocks 99% of urban chatter",
+        "Ultra-light carbon fiber frame - won't cause ear fatigue on commutes",
+        "Massive 40-hour battery runtime with Type-C rapid charging"
       ]
     },
     {
-      "product_name": "SonicStride Pro Runners",
-      "price_usd": 159.0,
+      "product_name": "HydroShield Minimalist Backpack",
+      "price_usd": 95.00,
       "unique_selling_points": [
-        "Kinetic energy return soles",
-        "Seamless breathable knit upper",
-        "All-day arch support"
+        "Military-grade waterproof ballistic nylon mesh fabric",
+        "Hidden anti-theft tech compartment accessible only from the interior back panel",
+        "Integrated USB-C pass-through charging routing"
       ]
-    }
-  ],
-  "promotions": [
-    {
-      "rule_name": "Rainy Day Flash Sale",
-      "discount_percent": 15.0,
-      "trigger_type": "weather_or_apparel",
-      "threshold": "outerwear",
-      "description": "15% off all performance jackets when customers are detected wearing rain or cold outerwear."
-    },
-    {
-      "rule_name": "Dwell Engagement Bundle",
-      "discount_percent": 20.0,
-      "trigger_type": "dwell_time",
-      "threshold": "30s",
-      "description": "20% off when customer explores the kiosk for more than 30 seconds."
     }
   ]
 }
