@@ -77,6 +77,11 @@
   - Granular event filtering (`NEW_INTERACTION`, `LEAD_QUALIFIED`, `FEEDBACK_RECORDED`).
   - Interactive dashboard configuration card with real-time test dispatch triggering.
 
-- Phase 16: Multi-Kiosk Fleet Synchronization & Distributed Mesh (Planned 1.6.0)
+- Phase 16: Dynamic Promotional Engine & Multi-Armed Bandit VLM Synthesis (Completed 1.5.1)
+  - Real-time sensory condition matching (`match_promotions`) evaluating customer dwell time, distance, and apparel keywords against store promotional incentives.
+  - Empirical Bayesian conversion statistics (win rates and 95% Wilson confidence intervals) synthesized into VLM prompts.
+  - Sensory urgency and scarcity pitch tailoring combining promotional discounts and inventory limits.
+
+- Phase 17: Multi-Kiosk Fleet Synchronization & Distributed Mesh (Planned 1.6.0)
   - Distributed SQLite sync via Litestream or Raft-backed Redis cluster across multi-kiosk storefront networks.
   - Cross-kiosk customer trajectory handover with privacy-preserving appearance embeddings.

@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## [1.5.1] - Dynamic Promotional Engine & Multi-Armed Bandit VLM Synthesis
+- **Dynamic Promotional Matching Engine (`src/llm_client.py`)**: Implemented `match_promotions()` evaluating customer sensory attributes (dwell time, proximity distance, apparel keywords like jackets/outerwear) against configured promotional rules in `config/inventory.json`.
+- **Bandit Empirical Guidance in VLM Prompts (`src/llm_client.py`)**: Enhanced `construct_system_prompt()` to dynamically inject real-time conversion rates, Wilson 95% confidence intervals, and empirical strategic directives from the Multi-Armed Bandit engine.
+- **Multimodal Urgency & Promotional Synthesis (`src/llm_client.py`)**: Updated `format_multimodal_user_content()` and fallback pitch generation in `generate_sales_response()` to inject matched promotional incentives alongside calibrated urgency/scarcity directives.
+- **Simulated Detection Telemetry Integration (`hub/main.py`)**: Updated `/simulate_detection` to query bandit performance metrics (`get_framework_performance`) and pass empirical conversion statistics into VLM stream generation.
+- **Unit & Integration Test Suite Expansion (`tests/test_promotions.py`, `tests/test_conversation.py`)**: Added dedicated tests for sensory promotional matching and bandit prompt synthesis with 100% test pass rate across 46 tests.
+
 ## [1.5.0] - Outbound CRM Webhook Relay & Cryptographic Signature Dispatch
 - **Asynchronous Webhook Relay Engine (`hub/webhooks.py`)**: Implemented non-blocking background HTTP dispatch system (`WebhookManager`) integrating external CRMs and marketing automation platforms (Salesforce, HubSpot, Zapier).
 - **HMAC-SHA256 Cryptographic Verification**: Generates hexadecimal signatures (`X-Sirens-Signature: sha256=<digest>`) and timestamp headers (`X-Sirens-Timestamp`) over JSON payload bodies using configurable endpoint secret keys.

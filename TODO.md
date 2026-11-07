@@ -70,6 +70,13 @@
 - [x] Write comprehensive test suite in `tests/test_webhooks.py` with 100% pass rate.
 - [x] Visual Playwright screenshot and UI verification.
 
+## Completed in 1.5.1
+- [x] Implement sensory condition dynamic promotional matching (`match_promotions`) in `src/llm_client.py`.
+- [x] Synthesize empirical Multi-Armed Bandit win rates and 95% Wilson confidence bounds directly into VLM system prompts (`construct_system_prompt`).
+- [x] Enrich multimodal chat content and fallback pitches with matched promotional discounts and scarcity directives.
+- [x] Connect bandit telemetry into simulation pipeline (`POST /simulate_detection` in `hub/main.py`).
+- [x] Expand automated test coverage with tests in `tests/test_promotions.py` and `tests/test_conversation.py`.
+
 ## Short-Term (1.6.0)
 - [ ] Multi-kiosk fleet synchronization via central Redis clustering or gRPC mesh.
 - [ ] Customer interaction replay and synthetic voice evaluation loop.

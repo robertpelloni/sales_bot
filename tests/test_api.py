@@ -114,7 +114,7 @@ def test_server_status_and_shutdown(client):
     data = response.json()
     assert data["status"] == "healthy"
     assert data["service"] == "Project Sirens Hub"
-    assert data["version"] in ["1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0"]
+    assert data["version"] in ["1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.5.1"]
     assert "mock_vision" in data
     assert "inventory_item_count" in data
     assert "active_promotions_count" in data
