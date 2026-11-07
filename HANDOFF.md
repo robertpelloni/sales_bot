@@ -1,7 +1,22 @@
-# HANDOFF - Project Sirens (v1.5.0)
+# HANDOFF - Project Sirens (v1.5.1)
 
 ## Session Summary & Overview
-In this session, Project Sirens was upgraded across versions **0.7.0**, **0.8.0**, **0.9.0**, **1.0.0**, **1.1.0**, **1.2.0**, **1.3.0**, **1.4.0**, and **1.5.0**, establishing an enterprise-grade autonomous retail sales bot combining Coral Edge TPU acceleration, real-time WebSocket live CRM feeds, multimodal Frontier VLM pitch synthesis, Contextual Multi-Armed Bandit sensory framework optimization, dynamic store promotions, streaming CRM lead export, and an asynchronous outbound enterprise CRM Webhook Relay with HMAC-SHA256 signature verification.
+In this session, Project Sirens was upgraded across versions **0.7.0** through **1.5.1**, establishing an enterprise-grade autonomous retail sales bot combining Coral Edge TPU acceleration, real-time WebSocket live CRM feeds, multimodal Frontier VLM pitch synthesis, Contextual Multi-Armed Bandit sensory & persona framework optimization, sensory-conditioned store promotions, streaming CRM lead export, and an asynchronous outbound enterprise CRM Webhook Relay with HMAC-SHA256 signature verification.
+
+## What Was Accomplished in v1.5.1 (Dynamic Promotional Engine, Shopper Persona Derivation & Contextual Bandit Weighting)
+1. **Sensory Condition Dynamic Promotional Matching (`src/llm_client.py`)**:
+   - Implemented `match_promotions()` evaluating customer sensory context (dwell time, proximity distance, apparel keywords like jackets/outerwear) against configured promotional rules in `config/inventory.json`.
+   - Injected matched promotional discounts directly into VLM system prompts, multimodal messages, and fallback pitch generation.
+2. **Shopper Persona Derivation & Behavioral Tone (`src/llm_client.py`)**:
+   - Implemented `derive_customer_persona()` categorizing shoppers into archetypes (`Athletic / Commuter`, `Weather-Conscious / Urban Traveler`, `Lifestyle / Urban Browser`, `Deep Evaluator / Quality Seeker`, `Spontaneous Shopper`).
+   - Wired persona classifications into behavioral prompt instructions and product recommendations.
+3. **Contextual Bandit Persona Weighting (`hub/ab_engine.py`, `hub/main.py`)**:
+   - Enhanced `calculate_context_affinity()` and `select_contextual()` in `MultiArmedBanditEngine` to weight sales frameworks based on customer persona (e.g. Challenger for Athletics, Consultative for Quality Seekers).
+   - Updated `/api/ab/select_framework` and `/simulate_detection` to support persona routing.
+4. **End-to-End Vision Loop Verification & UI Alignment**:
+   - Authored `test_start_vision_loop_mock_trigger` in `tests/test_vision.py` verifying real-time tracking, 1.5s dwell-time thresholding, apparel color heuristics, and Redis pub/sub message dispatching.
+   - Synchronized UI version status badge (`Hub v1.5.1 Online`) in `hub/templates/index.html`.
+   - Total test suite now stands at 47 passing tests across 8 test modules.
 
 ## What Was Accomplished in v1.5.0 (Outbound CRM Webhook Relay & Cryptographic Signature Dispatch)
 1. **Asynchronous Webhook Engine (`hub/webhooks.py`)**:
