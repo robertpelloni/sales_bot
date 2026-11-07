@@ -100,3 +100,63 @@ def test_color_extraction():
 
     # Empty crop fallback
     assert extract_visual_attributes(None) == ["casual attire", "customer"]
+
+
+@pytest.mark.asyncio
+async def test_start_vision_loop_mock_trigger(monkeypatch):
+    """
+    Verifies that start_vision_loop successfully tracks a mock target, respects dwell time,
+    and publishes CUSTOMER_DETECTED packet to Redis.
+    """
+    import json
+    from unittest.mock import AsyncMock
+
+    mock_published = []
+
+    class FakeRedis:
+        async def publish(self, channel, message):
+            mock_published.append({"channel": channel, "message": message})
+
+        async def aclose(self):
+            pass
+
+    import redis.asyncio as aioredis
+    monkeypatch.setattr(aioredis, "from_url", lambda url: FakeRedis())
+
+    # Advance time on each sleep so the 1.5s dwell threshold is reached during iterations
+    import asyncio
+    import time
+
+    simulated_time = 1000.0
+
+    def mock_time():
+        return simulated_time
+
+    monkeypatch.setattr(time, "time", mock_time)
+
+    orig_sleep = asyncio.sleep
+
+    async def fast_sleep(seconds):
+        nonlocal simulated_time
+        simulated_time += 1.0  # Advance simulated clock by 1.0s on each iteration
+        await orig_sleep(0.001)
+
+    monkeypatch.setattr(asyncio, "sleep", fast_sleep)
+
+    # Force mock vision mode
+    from src import vision
+    monkeypatch.setattr(vision, "get_system_config", lambda: (None, "True"))
+
+    # Run vision loop
+    await vision.start_vision_loop("redis://localhost:6379/0")
+
+    # Assert that CUSTOMER_DETECTED was published
+    assert len(mock_published) > 0
+    assert mock_published[0]["channel"] == "CUSTOMER_DETECTED"
+
+    packet = json.loads(mock_published[0]["message"])
+    assert packet["id"] == 1
+    assert "distance_m" in packet
+    assert "dwell_time_s" in packet
+    assert "attributes" in packet
+    assert "frame_data" in packet
