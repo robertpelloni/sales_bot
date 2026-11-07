@@ -26,6 +26,7 @@ class MultiArmedBanditEngine:
     """
     Implements Thompson Sampling, Epsilon-Greedy (with decay), and Upper Confidence Bound (UCB1)
     algorithms to dynamically route customer interactions to the highest converting retail sales frameworks.
+    Supports Contextual Bandit scoring based on vision features (dwell time and proximity distance).
     """
 
     def __init__(
@@ -33,7 +34,8 @@ class MultiArmedBanditEngine:
         epsilon: float = 0.20,
         decay_rate: float = 0.99,
         min_epsilon: float = 0.05,
-        default_method: str = "thompson"
+        default_method: str = "thompson",
+        contextual_weighting: bool = True
     ):
         # Epsilon rate: random exploration probability
         self.initial_epsilon = epsilon
@@ -41,6 +43,7 @@ class MultiArmedBanditEngine:
         self.decay_rate = decay_rate
         self.min_epsilon = min_epsilon
         self.default_method = default_method
+        self.contextual_weighting = contextual_weighting
         self.default_frameworks = list(DEFAULT_FRAMEWORKS)
         # In-memory overrides or custom prior adjustments
         self.manual_priors: Dict[str, Dict[str, float]] = {}
@@ -202,7 +205,130 @@ class MultiArmedBanditEngine:
 
         return best_arm
 
-    async def allocate_next_framework(self, session: AsyncSession, method: Optional[str] = None) -> Tuple[str, Dict[str, Any]]:
+    def calculate_context_affinity(
+        self,
+        framework: str,
+        dwell_time: Optional[float] = None,
+        distance_m: Optional[float] = None,
+        persona: Optional[str] = None
+    ) -> float:
+        """
+        Calculates a multiplicative contextual affinity score [0.5, 2.0] for a sales framework
+        based on edge vision sensory attributes:
+        - Distance <= 1.2m (Close): Customer is directly at kiosk display. Boost Assumptive Close & Challenger.
+        - Distance > 2.5m (Far): Approaching or passing customer. Boost Pattern Interrupt Cold-Open.
+        - Dwell Time >= 10.0s: Customer has engaged/browsed. Boost Consultative Problem-Solver.
+        - Dwell Time < 3.0s: Fleeting glance. Boost Pattern Interrupt Cold-Open.
+        """
+        multiplier = 1.0
+
+        if distance_m is not None:
+            if distance_m <= 1.2:
+                if framework in ["Assumptive Close Narrative", "Challenger Sales Framework"]:
+                    multiplier *= 1.4
+                elif framework == "Pattern Interrupt Cold-Open":
+                    multiplier *= 0.8
+            elif distance_m > 2.5:
+                if framework == "Pattern Interrupt Cold-Open":
+                    multiplier *= 1.5
+                elif framework == "Assumptive Close Narrative":
+                    multiplier *= 0.7
+
+        if dwell_time is not None:
+            if dwell_time >= 10.0:
+                if framework == "Consultative Problem-Solver":
+                    multiplier *= 1.5
+                elif framework == "Pattern Interrupt Cold-Open":
+                    multiplier *= 0.85
+            elif dwell_time < 3.0:
+                if framework == "Pattern Interrupt Cold-Open":
+                    multiplier *= 1.4
+                elif framework == "Consultative Problem-Solver":
+                    multiplier *= 0.7
+
+        if persona is not None:
+            if "Athletic" in persona or "Commuter" in persona:
+                if framework == "Challenger Sales Framework":
+                    multiplier *= 1.25
+            elif "Deep Evaluator" in persona or "Quality" in persona:
+                if framework == "Consultative Problem-Solver":
+                    multiplier *= 1.3
+            elif "Spontaneous" in persona:
+                if framework == "Pattern Interrupt Cold-Open":
+                    multiplier *= 1.3
+
+        return round(multiplier, 2)
+
+    def select_contextual(
+        self,
+        stats: Dict[str, Dict[str, Any]],
+        dwell_time: Optional[float] = None,
+        distance_m: Optional[float] = None,
+        persona: Optional[str] = None,
+        base_method: Optional[str] = None
+    ) -> Tuple[str, Dict[str, float]]:
+        """
+        Contextual Bandit selector:
+        1. Derives baseline sampled or calculated scores across arms using the chosen bandit method.
+        2. Adjusts scores via vision context affinities (dwell time and spatial distance).
+        3. Returns the arm maximizing the context-adjusted expectation score along with context affinities.
+        """
+        method = base_method or self.default_method
+        affinities: Dict[str, float] = {}
+
+        for arm in stats.keys():
+            affinities[arm] = self.calculate_context_affinity(
+                arm, dwell_time=dwell_time, distance_m=distance_m, persona=persona
+            )
+
+        best_score = -1.0
+        best_arm = self.default_frameworks[0]
+
+        total_trials = sum(int(d.get("trials", 0)) for d in stats.values())
+
+        for arm, data in stats.items():
+            mult = affinities[arm] if self.contextual_weighting else 1.0
+
+            if method == "ucb1":
+                trials = int(data.get("trials", 0))
+                if trials == 0:
+                    base_val = 1.0
+                else:
+                    mean_reward = float(data.get("conversion_rate", 0.0)) / 100.0
+                    bonus = math.sqrt((2.0 * math.log(max(1, total_trials))) / trials)
+                    base_val = mean_reward + bonus
+            elif method == "epsilon_greedy":
+                if random.random() < self.epsilon:
+                    base_val = random.random()
+                else:
+                    base_val = float(data.get("conversion_rate", 0.0)) / 100.0
+            else:
+                # Default: Thompson sampling
+                alpha = max(0.001, float(data.get("alpha", 1.0)))
+                beta = max(0.001, float(data.get("beta", 1.0)))
+                try:
+                    base_val = random.betavariate(alpha, beta)
+                except Exception:
+                    base_val = 0.5
+
+            adjusted_score = base_val * mult
+            if adjusted_score > best_score:
+                best_score = adjusted_score
+                best_arm = arm
+
+        if method == "epsilon_greedy":
+            self.decay_epsilon()
+
+        return best_arm, affinities
+
+    async def allocate_next_framework(
+        self,
+        session: AsyncSession,
+        method: Optional[str] = None,
+        dwell_time: Optional[float] = None,
+        distance_m: Optional[float] = None,
+        persona: Optional[str] = None
+    ) -> Tuple[str, Dict[str, Any]]:
         """
         Selects the next sales framework to employ based on historical bandit performance.
         Supports 'thompson', 'epsilon_greedy', and 'ucb1'.
@@ -211,12 +337,20 @@ class MultiArmedBanditEngine:
         algo = method or self.default_method
         stats = await self.get_framework_performance(session)
 
-        if algo == "epsilon_greedy":
-            chosen = self.select_epsilon_greedy(stats)
-        elif algo == "ucb1":
-            chosen = self.select_ucb1(stats)
+        if self.contextual_weighting and (dwell_time is not None or distance_m is not None or persona is not None):
+            chosen, affinities = self.select_contextual(
+                stats, dwell_time=dwell_time, distance_m=distance_m, persona=persona, base_method=algo
+            )
+            # Embed context affinity metrics into response stats for real-time observability
+            for arm in stats:
+                stats[arm]["context_affinity"] = affinities.get(arm, 1.0)
         else:
-            chosen = self.sample_thompson(stats)
+            if algo == "epsilon_greedy":
+                chosen = self.select_epsilon_greedy(stats)
+            elif algo == "ucb1":
+                chosen = self.select_ucb1(stats)
+            else:
+                chosen = self.sample_thompson(stats)
 
         return chosen, stats
 

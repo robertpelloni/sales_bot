@@ -1,6 +1,7 @@
 import sys
 import os
 import json
+import datetime
 
 # Ensure project root is in sys.path so we can import src modules globally
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -20,6 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import func, Integer, select
 from .database import get_db, init_db, Interaction
 from .ab_engine import bandit_engine
+from .webhooks import webhook_manager
 
 app = FastAPI(title="Project Sirens Dashboard")
 security = HTTPBasic()
@@ -68,6 +70,27 @@ async def log_interaction(interaction: InteractionCreate, db: AsyncSession = Dep
         db.add(db_interaction)
         await db.commit()
         await db.refresh(db_interaction)
+
+        # Broadcast event to connected WebSocket dashboards
+        event_data = {
+            "id": db_interaction.id,
+            "timestamp": db_interaction.timestamp.strftime('%Y-%m-%d %H:%M'),
+            "attributes": db_interaction.attributes,
+            "response": db_interaction.response,
+            "sales_framework": db_interaction.sales_framework,
+            "tts_latency_ms": db_interaction.tts_latency_ms,
+            "is_lead": db_interaction.is_lead,
+            "follow_up_notes": db_interaction.follow_up_notes,
+            "feedback_score": db_interaction.feedback_score
+        }
+        await ws_manager.broadcast({
+            "event": "NEW_INTERACTION",
+            "data": event_data
+        })
+
+        # Asynchronously dispatch outbound webhook
+        await webhook_manager.dispatch_event("NEW_INTERACTION", event_data)
+
         return {"status": "success", "id": db_interaction.id}
     except Exception as e:
         await db.rollback()
@@ -163,8 +186,10 @@ async def read_root(request: Request, simulated_response: str = "", error_messag
             "epsilon": bandit_engine.epsilon,
             "decay_rate": bandit_engine.decay_rate,
             "min_epsilon": bandit_engine.min_epsilon,
-            "default_method": bandit_engine.default_method
+            "default_method": bandit_engine.default_method,
+            "contextual_weighting": bandit_engine.contextual_weighting
         },
+        "webhook_config": webhook_manager.config,
         "error_message": error_message
     })
 
@@ -409,6 +434,16 @@ async def mark_lead(request: Request, interaction_id: int, is_lead: bool = Form(
         if interaction:
             interaction.is_lead = is_lead
             await db.commit()
+            if is_lead:
+                await webhook_manager.dispatch_event("LEAD_QUALIFIED", {
+                    "id": interaction.id,
+                    "timestamp": interaction.timestamp.strftime('%Y-%m-%d %H:%M') if interaction.timestamp else "",
+                    "attributes": interaction.attributes,
+                    "response": interaction.response,
+                    "sales_framework": interaction.sales_framework,
+                    "follow_up_notes": interaction.follow_up_notes,
+                    "feedback_score": interaction.feedback_score
+                })
     except Exception as e:
         print(f"Error marking lead: {e}")
         return await read_root(request, error_message=f"Error marking lead: {e}", db=db)
@@ -458,16 +493,40 @@ async def simulate_detection(
 ):
     from src.llm_client import process_vlm_stream
 
-    # Dynamically resolve framework if requested or defaulted to auto bandit allocation
+    # Dynamically resolve framework and bandit performance metrics for simulation prompt synthesis
     effective_framework = None
-    if framework_selection == "auto":
-        try:
-            chosen_fw, _ = await bandit_engine.allocate_next_framework(db)
+    bandit_insights = None
+    try:
+        framework_stats = await bandit_engine.get_framework_performance(db)
+        if framework_selection == "auto":
+            from src.llm_client import derive_customer_persona
+            sim_persona = derive_customer_persona({"attributes": [a.strip() for a in attributes.split(",")], "dwell_time_s": dwell_time_s})
+            chosen_fw, _ = await bandit_engine.allocate_next_framework(
+                db,
+                dwell_time=dwell_time_s,
+                distance_m=distance_m,
+                persona=sim_persona.get("persona")
+            )
             effective_framework = chosen_fw
-        except Exception as e:
-            print(f"Error during bandit framework allocation: {e}")
-    elif framework_selection.strip():
-        effective_framework = framework_selection.strip()
+        elif framework_selection.strip():
+            effective_framework = framework_selection.strip()
+
+        fw_target = effective_framework or "Pattern Interrupt Cold-Open"
+        target_stats = framework_stats.get(fw_target, {})
+        win_rate = target_stats.get("win_rate", 0.0) * 100.0
+        ci_lower = target_stats.get("ci_lower", 0.0) * 100.0
+        ci_upper = target_stats.get("ci_upper", 0.0) * 100.0
+
+        bandit_insights = {
+            "recommended_framework": fw_target,
+            "win_rate": win_rate,
+            "guidance": f"Bandit optimization active with empirical win rate {win_rate:.1f}%. Prioritize high-conversion value hooks.",
+            "confidence_interval": f"[{ci_lower:.1f}% - {ci_upper:.1f}%]"
+        }
+    except Exception as e:
+        print(f"Error extracting bandit performance metrics: {e}")
+        if framework_selection.strip() and framework_selection != "auto":
+            effective_framework = framework_selection.strip()
 
     attrs_list = [attr.strip() for attr in attributes.split(",")]
     mock_packet = {
@@ -477,6 +536,7 @@ async def simulate_detection(
         "dwell_time_s": dwell_time_s,
         "attributes": attrs_list,
         "sales_framework": effective_framework,
+        "bandit_insights": bandit_insights,
         "frame_data": "",
         "system_prompt_override": system_prompt_override.strip(),
         "temperature": temperature
@@ -554,20 +614,36 @@ async def get_ab_allocations(db: AsyncSession = Depends(get_db), username: str =
             "epsilon": bandit_engine.epsilon,
             "decay_rate": bandit_engine.decay_rate,
             "min_epsilon": bandit_engine.min_epsilon,
-            "default_method": bandit_engine.default_method
+            "default_method": bandit_engine.default_method,
+            "contextual_weighting": bandit_engine.contextual_weighting
         }
     }
 
 
 @app.post("/api/ab/select_framework")
-async def select_ab_framework(method: Optional[str] = None, db: AsyncSession = Depends(get_db), username: str = Depends(get_current_username)):
-    """Dynamically samples the optimal sales framework for an incoming customer interaction."""
-    chosen_framework, stats = await bandit_engine.allocate_next_framework(db, method=method)
+async def select_ab_framework(
+    method: Optional[str] = None,
+    dwell_time_s: Optional[float] = None,
+    distance_m: Optional[float] = None,
+    persona: Optional[str] = None,
+    db: AsyncSession = Depends(get_db),
+    username: str = Depends(get_current_username)
+):
+    """Dynamically samples the optimal sales framework for an incoming customer interaction, supporting vision context and persona."""
+    chosen_framework, stats = await bandit_engine.allocate_next_framework(
+        db,
+        method=method,
+        dwell_time=dwell_time_s,
+        distance_m=distance_m,
+        persona=persona
+    )
+    chosen_stats = stats.get(chosen_framework, {})
     return {
         "status": "success",
         "selected_framework": chosen_framework,
         "method": method or bandit_engine.default_method,
-        "conversion_rate": stats.get(chosen_framework, {}).get("conversion_rate", 0.0)
+        "conversion_rate": chosen_stats.get("conversion_rate", 0.0),
+        "context_affinity": chosen_stats.get("context_affinity", 1.0)
     }
 
 
@@ -576,6 +652,7 @@ class BanditConfigPayload(BaseModel):
     decay_rate: Optional[float] = None
     min_epsilon: Optional[float] = None
     default_method: Optional[str] = None
+    contextual_weighting: Optional[bool] = None
 
 
 @app.post("/api/ab/config")
@@ -593,6 +670,8 @@ async def configure_ab_bandit(
     if payload.default_method is not None:
         if payload.default_method in ["thompson", "epsilon_greedy", "ucb1"]:
             bandit_engine.default_method = payload.default_method
+    if payload.contextual_weighting is not None:
+        bandit_engine.contextual_weighting = bool(payload.contextual_weighting)
 
     return {
         "status": "success",
@@ -600,7 +679,8 @@ async def configure_ab_bandit(
             "epsilon": bandit_engine.epsilon,
             "decay_rate": bandit_engine.decay_rate,
             "min_epsilon": bandit_engine.min_epsilon,
-            "default_method": bandit_engine.default_method
+            "default_method": bandit_engine.default_method,
+            "contextual_weighting": bandit_engine.contextual_weighting
         }
     }
 
@@ -631,6 +711,7 @@ async def update_ab_config_form(
     decay_rate: float = Form(0.99),
     min_epsilon: float = Form(0.05),
     default_method: str = Form("thompson"),
+    contextual_weighting: Optional[str] = Form(None),
     db: AsyncSession = Depends(get_db),
     username: str = Depends(get_current_username)
 ):
@@ -638,6 +719,7 @@ async def update_ab_config_form(
     bandit_engine.epsilon = max(0.0, min(1.0, float(epsilon)))
     bandit_engine.decay_rate = max(0.5, min(1.0, float(decay_rate)))
     bandit_engine.min_epsilon = max(0.0, min(1.0, float(min_epsilon)))
+    bandit_engine.contextual_weighting = (contextual_weighting == "on" or contextual_weighting == "true")
     if default_method in ["thompson", "epsilon_greedy", "ucb1"]:
         bandit_engine.default_method = default_method
     return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
@@ -726,6 +808,88 @@ async def get_analytics_summary(db: AsyncSession = Depends(get_db), username: st
         "avg_tts_latency_ms": round(float(avg_latency), 1),
         "avg_feedback_score": round(float(avg_feedback), 2)
     }
+
+
+class WebhookConfigUpdate(BaseModel):
+    enabled: bool
+    url: str
+    secret: Optional[str] = ""
+    events: Optional[List[str]] = ["NEW_INTERACTION", "LEAD_QUALIFIED"]
+    timeout_seconds: Optional[float] = 5.0
+
+
+@app.get("/api/webhooks/config")
+async def get_webhook_config(username: str = Depends(get_current_username)):
+    """Returns the current outbound webhook configuration."""
+    return {"status": "success", "config": webhook_manager.config}
+
+
+@app.post("/api/webhooks/config")
+async def update_webhook_config(config_in: WebhookConfigUpdate, username: str = Depends(get_current_username)):
+    """Updates outbound webhook settings and persists them to config/webhooks.json."""
+    webhook_manager.save_config({
+        "enabled": config_in.enabled,
+        "url": config_in.url,
+        "secret": config_in.secret or "",
+        "events": config_in.events or ["NEW_INTERACTION", "LEAD_QUALIFIED"],
+        "timeout_seconds": config_in.timeout_seconds or 5.0
+    })
+    return {"status": "success", "config": webhook_manager.config}
+
+
+@app.post("/api/webhooks/test")
+async def test_webhook_dispatch(username: str = Depends(get_current_username)):
+    """Dispatches a test mock payload to the configured webhook endpoint."""
+    if not webhook_manager.config.get("url"):
+        raise HTTPException(status_code=400, detail="Webhook URL is not configured.")
+
+    test_payload = {
+        "event": "TEST_PING",
+        "timestamp": datetime.datetime.now(datetime.UTC).isoformat(),
+        "data": {
+            "message": "Project Sirens test webhook dispatch",
+            "version": "1.5.0",
+            "hub_status": "operational"
+        }
+    }
+    success = await webhook_manager._send_http_request(test_payload)
+    if not success:
+        raise HTTPException(status_code=502, detail="Webhook test delivery failed or timed out.")
+    return {"status": "success", "message": "Test webhook payload delivered successfully."}
+
+
+@app.post("/update_webhooks")
+async def update_webhooks_form(
+    request: Request,
+    enabled: Optional[str] = Form(None),
+    url: str = Form(""),
+    secret: str = Form(""),
+    event_new_interaction: Optional[str] = Form(None),
+    event_lead_qualified: Optional[str] = Form(None),
+    timeout_seconds: float = Form(5.0),
+    db: AsyncSession = Depends(get_db),
+    username: str = Depends(get_current_username)
+):
+    """Handles HTML form submission for updating webhook integration settings."""
+    try:
+        events = []
+        if event_new_interaction:
+            events.append("NEW_INTERACTION")
+        if event_lead_qualified:
+            events.append("LEAD_QUALIFIED")
+
+        webhook_manager.save_config({
+            "enabled": enabled is not None,
+            "url": url.strip(),
+            "secret": secret.strip(),
+            "events": events,
+            "timeout_seconds": float(timeout_seconds)
+        })
+    except Exception as e:
+        print(f"Error updating webhook configuration: {e}")
+        return await read_root(request, error_message=f"Error updating webhooks: {e}", db=db)
+
+    return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
 
 
 @app.post("/api/server/shutdown")

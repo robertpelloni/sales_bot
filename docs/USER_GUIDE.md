@@ -42,12 +42,27 @@ Every customer interaction is streamed and persisted in `sirens.db`:
 - **Follow-up Notes**: Add staff notes directly to customer interaction cards.
 - **Exporting CRM Leads & Logs (CSV)**: Click **Export Leads (CSV)** to stream and download all flagged qualified leads directly into an RFC 4180 CSV spreadsheet. To export every customer interaction log regardless of lead qualification, click **All Logs**.
 - **Automated A/B Sales Framework Optimization**: Inspect live empirical win rates, Beta prior parameters ($\alpha, \beta$), and 95% confidence intervals per sales framework. Tune algorithm routing strategies (Thompson Sampling, Upper Confidence Bound UCB1, or Epsilon-Greedy with geometric decay) and exploration parameters directly from the dashboard card.
+- **Contextual Vision Affinity Routing**: Enable contextual weighting in the Bandit Algorithmic Tuning panel. When enabled, the Multi-Armed Bandit dynamically biases framework selection based on optical vision tracking:
+  - *Close Proximity (≤1.2m)*: Biases toward Assumptive Close Narrative and Challenger Sales Framework.
+  - *Far Distance (>2.5m)*: Biases toward Pattern Interrupt Cold-Open to turn passing pedestrian heads.
+  - *High Dwell (≥10s)*: Biases toward Consultative Problem-Solver for customers actively browsing.
 
 ---
 
-## 5. Reviewing CRM Logs & Analytics
-Every time the agent speaks to a customer (whether live in-store or via the simulation engine), the interaction is logged in the **Live Interaction Log & Analytics** panel.
+## 5. Knowledge Base & Sales Psychology Settings
+- **Product Inventory**: Add products with price and Unique Selling Points (USPs). Delete products with a single click.
+- **Store Identity**: Set the store name dynamically.
+- **Sales Psychology Modifiers**:
+  - Add or delete **Tactics Enforced** (e.g. *"Use assumptive close formatting"*).
+  - Add or delete **Privacy & Behavioral Constraints** (e.g. *"Never mention brand names"*).
+- **Hardware Connection**: Update `OPENAI_API_KEY`, Camera index, and toggle between Mock and Live Vision modes.
 
-- **The Chart:** A visual line graph automatically tracks the volume of conversations generated over the last 7 days.
-- **Tracking Leads:** If an interaction was particularly successful, click the green **Mark as Lead** button beneath the interaction card. This flags the engagement as a `Qualified Lead`.
-- **Follow-up Notes:** Type reminders or action items into the text box beneath a logged interaction and click **Save Note**. These notes are saved permanently to the database so you can review them later.
+---
+
+## 6. External CRM Webhook Relay (Salesforce, HubSpot, Zapier)
+Project Sirens automatically forwards real-time retail events to enterprise CRMs and marketing automation platforms without stalling the edge pipeline:
+- **Enable Webhook Forwarding**: Toggle the active status switch in the External CRM Webhook Relay card.
+- **Webhook Destination URL**: Provide an HTTPS endpoint (e.g., Salesforce/HubSpot ingest hook or Zapier trigger).
+- **HMAC Secret Key**: Specify a secret signing key. Each dispatched HTTP request includes an `X-Sirens-Signature: sha256=<hex_digest>` header computed over the JSON payload for cryptographic verification.
+- **Event Filtering**: Check which lifecycle events should trigger dispatches (`New Interactions`, `Qualified Leads Flagged`, `Staff Feedback Recorded`).
+- **Send Test Ping**: Click the test ping button to immediately fire an asynchronous mock test payload and verify external connectivity and signature validation.

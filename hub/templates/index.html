@@ -69,7 +69,7 @@
             <div class="system-status-group">
                 <div class="status-pill">
                     <span class="status-dot"></span>
-                    <span>Hub v1.3.0 Online</span>
+                    <span>Hub v1.5.1 Online</span>
                     <span class="tooltip">ⓘ<span class="tooltiptext">FastAPI asynchronous control server running on port 8000.</span></span>
                 </div>
                 <div class="status-pill" id="ws-pill">
@@ -393,8 +393,13 @@
                 <!-- Bandit Hyperparameters Tuning Form -->
                 <div style="background: #f1f5f9; border-radius: 8px; padding: 12px; margin-bottom: 16px; border: 1px solid #e2e8f0;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                        <strong style="font-size: 0.85em; color: #334155;">⚙️ Bandit Algorithmic Tuning</strong>
-                        <span class="badge" style="background: #e0f2fe; color: #0284c7; font-size: 0.75em;">Active: {{ bandit_config.default_method|upper }}</span>
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <strong style="font-size: 0.85em; color: #334155;">⚙️ Bandit Algorithmic Tuning</strong>
+                            <span class="badge" style="background: #e0f2fe; color: #0284c7; font-size: 0.75em;">Active: {{ bandit_config.default_method|upper }}</span>
+                        </div>
+                        <span class="badge" style="background: {% if bandit_config.contextual_weighting %}#dcfce7; color: #15803d{% else %}#f1f5f9; color: #64748b{% endif %}; font-size: 0.75em;">
+                            Contextual: {% if bandit_config.contextual_weighting %}ENABLED{% else %}DISABLED{% endif %}
+                        </span>
                     </div>
                     <form method="post" action="/update_ab_config">
                         <div class="split-3" style="margin-bottom: 8px;">
@@ -423,6 +428,13 @@
                                     <input type="number" id="min_epsilon" name="min_epsilon" step="0.01" min="0.0" max="0.5" value="{{ '%.2f'|format(bandit_config.min_epsilon) }}" style="font-size: 0.85em; padding: 6px;" title="Min Epsilon">
                                 </div>
                             </div>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <label style="font-size: 0.78em; color: var(--text-main); display: inline-flex; align-items: center; gap: 6px; margin: 0; cursor: pointer;">
+                                <input type="checkbox" name="contextual_weighting" value="on" {% if bandit_config.contextual_weighting %}checked{% endif %} style="width: auto;">
+                                <span>Enable Vision Context Affinity Weighting (Dwell Time & Proximity Distance)</span>
+                                <span class="tooltip">ⓘ<span class="tooltiptext">When enabled, Multi-Armed Bandit weights arms according to physical customer zone and dwell cues (e.g. boosts Pattern Interrupt for approaching far shoppers; Consultative for extended dwell).</span></span>
+                            </label>
                         </div>
                         <div style="display: flex; gap: 8px;">
                             <button type="submit" style="flex-grow: 1; font-size: 0.8em; padding: 6px; background-color: #4f46e5; color: white;">Save Bandit Config</button>
@@ -481,6 +493,84 @@
                         </form>
                     </div>
                 </div>
+
+                <!-- Hardware & System Credentials -->
+                <form method="post" action="/update_system_config" style="background: #f8fafc; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border);">
+                    <div style="font-weight: 600; font-size: 0.85em; margin-bottom: 8px; color: var(--text-main);">Hardware & API Connection</div>
+                    <div class="split-3">
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label for="openai_api_key" style="font-size: 0.8em;">OpenAI API Key
+                                <span class="tooltip">ⓘ<span class="tooltiptext">API token for real-time streaming VLM inference.</span></span>
+                            </label>
+                            <input type="text" id="openai_api_key" name="openai_api_key" value="{{ openai_api_key }}" placeholder="sk-..." style="padding: 5px 8px; font-size: 0.8em;">
+                        </div>
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label for="camera_index" style="font-size: 0.8em;">Camera Index
+                                <span class="tooltip">ⓘ<span class="tooltiptext">Hardware device ID (e.g. 0 for /dev/video0).</span></span>
+                            </label>
+                            <input type="number" id="camera_index" name="camera_index" value="{{ camera_index }}" style="padding: 5px 8px; font-size: 0.8em;">
+                        </div>
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label for="use_mock_vision" style="font-size: 0.8em;">Vision Engine
+                                <span class="tooltip">ⓘ<span class="tooltiptext">Toggle between synthetic testing and physical optical tracking.</span></span>
+                            </label>
+                            <select id="use_mock_vision" name="use_mock_vision" style="padding: 5px 8px; font-size: 0.8em;">
+                                <option value="True" {% if use_mock_vision == 'True' %}selected{% endif %}>Mock Mode (Test)</option>
+                                <option value="False" {% if use_mock_vision == 'False' %}selected{% endif %}>Live Physical Device</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button type="submit" style="width: 100%; margin-top: 8px; padding: 6px; font-size: 0.85em;">Update Hardware & Credentials</button>
+                </form>
+
+                <!-- CRM Webhook Forwarding & Integration -->
+                <div class="card-header" style="margin-top: 16px; margin-bottom: 8px;">
+                    <h2>🔗 External CRM Webhook Relay</h2>
+                    <span class="tooltip">ⓘ<span class="tooltiptext">Stream interaction logs and qualified lead captures to Salesforce, HubSpot, or Zapier with HMAC-SHA256 signatures.</span></span>
+                    <span class="badge {% if webhook_config.enabled %}badge-lead{% else %}badge-method{% endif %}" style="margin-left: auto;">
+                        {% if webhook_config.enabled %}RELAY: ACTIVE{% else %}RELAY: DISABLED{% endif %}
+                    </span>
+                </div>
+                <form method="post" action="/update_webhooks" style="background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid var(--border);">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+                        <label style="font-weight: 600; font-size: 0.85em; cursor: pointer; display: flex; align-items: center; gap: 6px; margin-bottom: 0;">
+                            <input type="checkbox" name="enabled" value="True" {% if webhook_config.enabled %}checked{% endif %}>
+                            Enable Outbound CRM Webhook Forwarding
+                        </label>
+                        <span style="font-size: 0.75em; color: var(--text-muted);">Async Non-Blocking</span>
+                    </div>
+                    <div class="split-2" style="margin-bottom: 8px;">
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label for="webhook_url" style="font-size: 0.8em;">Target Webhook URL
+                                <span class="tooltip">ⓘ<span class="tooltiptext">HTTPS destination endpoint for lead event JSON payloads.</span></span>
+                            </label>
+                            <input type="url" id="webhook_url" name="url" value="{{ webhook_config.url or '' }}" placeholder="https://api.crm.com/webhook/v1" style="padding: 5px 8px; font-size: 0.8em;">
+                        </div>
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label for="webhook_secret" style="font-size: 0.8em;">HMAC Secret Key (Optional)
+                                <span class="tooltip">ⓘ<span class="tooltiptext">Shared secret string for generating X-Sirens-Signature HMAC-SHA256 headers.</span></span>
+                            </label>
+                            <input type="text" id="webhook_secret" name="secret" value="{{ webhook_config.secret or '' }}" placeholder="Optional signature secret" style="padding: 5px 8px; font-size: 0.8em;">
+                        </div>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px; flex-wrap: wrap; gap: 8px;">
+                        <div style="display: flex; gap: 12px; font-size: 0.8em;">
+                            <label style="cursor: pointer; display: flex; align-items: center; gap: 4px;">
+                                <input type="checkbox" name="event_new_interaction" value="NEW_INTERACTION" {% if 'NEW_INTERACTION' in webhook_config.events %}checked{% endif %}>
+                                All Interactions
+                            </label>
+                            <label style="cursor: pointer; display: flex; align-items: center; gap: 4px;">
+                                <input type="checkbox" name="event_lead_qualified" value="LEAD_QUALIFIED" {% if 'LEAD_QUALIFIED' in webhook_config.events %}checked{% endif %}>
+                                Qualified Leads Only
+                            </label>
+                        </div>
+                        <div style="display: flex; gap: 6px;">
+                            <button type="button" class="btn-secondary" style="padding: 5px 10px; font-size: 0.8em;" onclick="testWebhookEndpoint()">Test Dispatch Ping</button>
+                            <button type="submit" class="btn-success" style="padding: 5px 12px; font-size: 0.8em;">Save Webhook Relay</button>
+                        </div>
+                    </div>
+                    <div id="webhook-test-result" style="display: none; font-size: 0.8em; margin-top: 8px; padding: 6px 10px; border-radius: 4px;"></div>
+                </form>
 
             </div>
         </div>
@@ -553,6 +643,114 @@
                 }
             }
         });
+
+        // Real-Time WebSocket Client
+        function initWebSocket() {
+            const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${wsProtocol}//${window.location.host}/ws/events`;
+            const wsDot = document.getElementById('ws-dot');
+            const wsText = document.getElementById('ws-status-text');
+
+            const socket = new WebSocket(wsUrl);
+
+            socket.onopen = () => {
+                wsDot.style.background = 'var(--success)';
+                wsText.innerText = 'WS Stream: Live';
+            };
+
+            socket.onclose = () => {
+                wsDot.style.background = 'var(--danger)';
+                wsText.innerText = 'WS Stream: Disconnected';
+                // Attempt reconnection after 3 seconds
+                setTimeout(initWebSocket, 3000);
+            };
+
+            socket.onerror = () => {
+                wsDot.style.background = 'var(--danger)';
+                wsText.innerText = 'WS Stream: Error';
+            };
+
+            socket.onmessage = (event) => {
+                try {
+                    const msg = JSON.parse(event.data);
+                    if (msg.event === 'NEW_INTERACTION' && msg.data) {
+                        const item = msg.data;
+                        const container = document.getElementById('interaction-feed-container');
+                        if (!container) return;
+
+                        const newCard = document.createElement('div');
+                        newCard.className = `item-card ${item.is_lead ? 'lead-card' : ''}`;
+                        newCard.style.animation = 'fadeIn 0.5s ease-in-out';
+                        newCard.innerHTML = `
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px;">
+                                <div>
+                                    <span style="font-weight: 600; color: var(--text-main); font-size: 0.9em;">Detected: ${item.attributes}</span>
+                                    ${item.is_lead ? '<span class="badge badge-lead" style="margin-left: 6px;">Qualified Lead</span>' : ''}
+                                </div>
+                                <span style="font-size: 0.75em; color: var(--text-muted); white-space: nowrap;">
+                                    ${item.timestamp}
+                                </span>
+                            </div>
+                            <div class="response-quote">"${item.response}"</div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 0.8em; color: var(--text-muted); margin-bottom: 8px;">
+                                <span>Framework: <strong>${item.sales_framework}</strong></span>
+                                ${item.tts_latency_ms > 0 ? `<span>Piper TTS Latency: <strong>${item.tts_latency_ms}ms</strong></span>` : ''}
+                            </div>
+                            <div style="background: #f1f5f9; padding: 8px 12px; border-radius: 6px; display: flex; flex-direction: column; gap: 8px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <form method="post" action="/mark_lead/${item.id}" style="margin: 0;">
+                                        <input type="hidden" name="is_lead" value="${item.is_lead ? 'False' : 'True'}">
+                                        <button type="submit" style="padding: 4px 10px; font-size: 0.8em; background-color: ${item.is_lead ? '#64748b' : 'var(--success)'};">
+                                            ${item.is_lead ? '✓ Remove Lead Flag' : '★ Flag as Qualified Lead'}
+                                        </button>
+                                    </form>
+                                    <form method="post" action="/submit_feedback/${item.id}" style="margin: 0; display: flex; align-items: center; gap: 6px;">
+                                        <span style="font-size: 0.8em; color: var(--text-muted);">Pitch Rating:</span>
+                                        <button type="submit" name="feedback_score" value="1" style="padding: 2px 8px; font-size: 0.85em; background-color: ${item.feedback_score === 1 ? 'var(--danger)' : '#cbd5e1'};">👎</button>
+                                        <button type="submit" name="feedback_score" value="5" style="padding: 2px 8px; font-size: 0.85em; background-color: ${item.feedback_score === 5 ? 'var(--success)' : '#cbd5e1'};">👍</button>
+                                    </form>
+                                </div>
+                                <form method="post" action="/update_follow_up/${item.id}" style="display: flex; gap: 6px; margin: 0;">
+                                    <input type="text" name="follow_up_notes" value="${item.follow_up_notes || ''}" placeholder="Add staff follow-up note..." style="padding: 5px 8px; font-size: 0.85em; flex-grow: 1;">
+                                    <button type="submit" class="btn-secondary" style="padding: 5px 10px; font-size: 0.8em;">Save Note</button>
+                                </form>
+                            </div>
+                        `;
+                        container.prepend(newCard);
+                    }
+                } catch (e) {
+                    console.error("Error processing websocket message:", e);
+                }
+            };
+        }
+
+        async function testWebhookEndpoint() {
+            const resDiv = document.getElementById('webhook-test-result');
+            resDiv.style.display = 'block';
+            resDiv.style.background = '#f1f5f9';
+            resDiv.style.color = '#334155';
+            resDiv.innerText = 'Dispatching test payload to webhook URL...';
+
+            try {
+                const response = await fetch('/api/webhooks/test', { method: 'POST' });
+                const data = await response.json();
+                if (response.ok) {
+                    resDiv.style.background = '#dcfce7';
+                    resDiv.style.color = '#166534';
+                    resDiv.innerText = '✓ Success: ' + data.message;
+                } else {
+                    resDiv.style.background = '#fee2e2';
+                    resDiv.style.color = '#991b1b';
+                    resDiv.innerText = '✕ Delivery Error: ' + (data.detail || 'Failed to dispatch');
+                }
+            } catch (err) {
+                resDiv.style.background = '#fee2e2';
+                resDiv.style.color = '#991b1b';
+                resDiv.innerText = '✕ Request Failed: ' + err.message;
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', initWebSocket);
     </script>
 </body>
 </html>

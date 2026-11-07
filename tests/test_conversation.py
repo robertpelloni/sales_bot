@@ -13,7 +13,8 @@ from llm_client import (
     chunk_text_stream,
     format_multimodal_user_content,
     process_vlm_stream,
-    derive_scarcity_and_urgency
+    derive_scarcity_and_urgency,
+    derive_customer_persona
 )
 
 
@@ -103,7 +104,7 @@ async def test_generate_sales_response():
     # Test athletic / sneakers condition
     customer_packet = {"attributes": ["red sneakers"]}
     response = await generate_sales_response(sys_prompt, customer_packet)
-    assert "athletic" in response
+    assert "SonicStride" in response
 
     # Test default fallback condition
     customer_packet = {"attributes": ["plain yellow hat"]}
@@ -120,12 +121,52 @@ async def test_construct_system_prompt():
     }
     prompt_modifiers = {"sales_framework": "Test Framework", "tactics_enforced": ["Urgency"], "constraints": ["Be polite"]}
 
+    # Without bandit insights
     prompt = construct_system_prompt(inventory, prompt_modifiers)
     assert "Test Store" in prompt
     assert "Test Framework" in prompt
     assert "Summer Promo" in prompt
     assert "Urgency" in prompt
     assert "Be polite" in prompt
+
+    # With bandit insights
+    bandit_insights = {
+        "recommended_framework": "Challenger Sales Framework",
+        "win_rate": 38.5,
+        "guidance": "Empirical leader from Bayesian bandit.",
+        "confidence_interval": "[28.0% - 50.0%]"
+    }
+    prompt_with_bandit = construct_system_prompt(inventory, prompt_modifiers, bandit_insights=bandit_insights)
+    assert "Challenger Sales Framework" in prompt_with_bandit
+    assert "38.5%" in prompt_with_bandit
+    assert "Empirical leader from Bayesian bandit." in prompt_with_bandit
+    assert "[28.0% - 50.0%]" in prompt_with_bandit
+
+
+@pytest.mark.asyncio
+async def test_sales_response_with_promotions():
+    """Verifies that sales response fallback injects matched promotional discounts into opening pitches."""
+    if "OPENAI_API_KEY" in os.environ:
+        del os.environ["OPENAI_API_KEY"]
+
+    customer_packet = {
+        "attributes": ["navy blue windbreaker"],
+        "dwell_time_s": 2.0,
+        "proximity": "1.5m (mid-range)",
+        "distance_m": 1.5,
+        "matched_promos": [
+            {
+                "rule_name": "Spring Flash Sale",
+                "discount_percent": 25.0,
+                "description": "25% off all windbreakers"
+            }
+        ]
+    }
+
+    response = await generate_sales_response("Mock prompt", customer_packet)
+    assert "winter coat" in response
+    assert "Spring Flash Sale" in response
+    assert "25.0% off" in response
 
 
 def test_chunk_text_stream():
@@ -143,6 +184,31 @@ def test_chunk_text_stream():
     assert len(chunks_trailing) == 2
     assert chunks_trailing[0] == "Sentence one."
     assert chunks_trailing[1] == "Sentence two without period"
+
+
+def test_derive_customer_persona():
+    """Verifies that sensory features map accurately into behavioral retail customer personas."""
+    # Athletic persona
+    p1 = derive_customer_persona({"attributes": ["athletic shorts", "running sneakers"]})
+    assert p1["persona"] == "Athletic / Commuter"
+    assert "Footwear" in p1["recommended_category"]
+
+    # Weather traveler persona
+    p2 = derive_customer_persona({"attributes": ["rain jacket", "hoodie"]})
+    assert p2["persona"] == "Weather-Conscious / Urban Traveler"
+    assert "Outerwear" in p2["recommended_category"]
+
+    # Lifestyle browser
+    p3 = derive_customer_persona({"attributes": ["carrying coffee", "tote bag"]})
+    assert p3["persona"] == "Lifestyle / Urban Browser"
+
+    # Deep evaluator (high dwell time)
+    p4 = derive_customer_persona({"attributes": ["formal watch"], "dwell_time_s": 8.5})
+    assert p4["persona"] == "Deep Evaluator / Quality Seeker"
+
+    # Default spontaneous
+    p5 = derive_customer_persona({"attributes": ["plain shirt"], "dwell_time_s": 1.0})
+    assert p5["persona"] == "Spontaneous Shopper"
 
 
 def test_format_multimodal_user_content():

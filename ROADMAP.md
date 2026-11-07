@@ -65,6 +65,23 @@
   - Algorithmic hyperparameter configuration (`POST /api/ab/config`) and prior state reset (`POST /api/ab/reset`).
   - Simulation dynamic framework auto-allocation routing.
 
-- Phase 14: Multi-Kiosk Fleet Synchronization & Distributed Mesh (Planned 1.4.0)
+- Phase 14: Contextual Multi-Armed Bandit Personalization & Sensory Vision Routing (Completed 1.4.0)
+  - Contextual arm affinity engine (`calculate_context_affinity`, `select_contextual`) conditioning framework scores on real-time vision sensory attributes.
+  - Distance heuristics: close proximity boosts Assumptive Close & Challenger; far distance boosts Pattern Interrupt.
+  - Dwell heuristics: extended dwell boosts Consultative Problem-Solver; fleeting glance boosts Pattern Interrupt.
+  - Dashboard UI controls for toggling vision context affinity weighting.
+
+- Phase 15: Outbound CRM Webhook Relay & Cryptographic Dispatch (Completed 1.5.0)
+  - Asynchronous background HTTP webhook dispatch engine (`WebhookManager`) connecting external enterprise CRMs (Salesforce, HubSpot, Zapier).
+  - HMAC-SHA256 signature verification (`X-Sirens-Signature`) with timestamp headers over payload bodies.
+  - Granular event filtering (`NEW_INTERACTION`, `LEAD_QUALIFIED`, `FEEDBACK_RECORDED`).
+  - Interactive dashboard configuration card with real-time test dispatch triggering.
+
+- Phase 16: Dynamic Promotional Engine & Multi-Armed Bandit VLM Synthesis (Completed 1.5.1)
+  - Real-time sensory condition matching (`match_promotions`) evaluating customer dwell time, distance, and apparel keywords against store promotional incentives.
+  - Empirical Bayesian conversion statistics (win rates and 95% Wilson confidence intervals) synthesized into VLM prompts.
+  - Sensory urgency and scarcity pitch tailoring combining promotional discounts and inventory limits.
+
+- Phase 17: Multi-Kiosk Fleet Synchronization & Distributed Mesh (Planned 1.6.0)
   - Distributed SQLite sync via Litestream or Raft-backed Redis cluster across multi-kiosk storefront networks.
   - Cross-kiosk customer trajectory handover with privacy-preserving appearance embeddings.

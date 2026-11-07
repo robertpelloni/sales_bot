@@ -1,7 +1,44 @@
-# HANDOFF - Project Sirens (v1.3.0)
+# HANDOFF - Project Sirens (v1.5.0)
 
 ## Session Summary & Overview
-In this session, Project Sirens was upgraded across versions **0.7.0**, **0.8.0**, **0.9.0**, **1.0.0**, **1.1.0**, **1.2.0**, and **1.3.0**, establishing an enterprise-grade autonomous retail sales bot combining Coral Edge TPU acceleration, real-time WebSocket live CRM feeds, multimodal Frontier VLM pitch synthesis, advanced Multi-Armed Bandit dynamic strategy allocation (Thompson Sampling, UCB1, Epsilon-Greedy with decay), an interactive dynamic store promotions engine, and streaming CRM lead export with real-time analytics aggregation.
+In this session, Project Sirens was upgraded across versions **0.7.0**, **0.8.0**, **0.9.0**, **1.0.0**, **1.1.0**, **1.2.0**, **1.3.0**, **1.4.0**, and **1.5.0**, establishing an enterprise-grade autonomous retail sales bot combining Coral Edge TPU acceleration, real-time WebSocket live CRM feeds, multimodal Frontier VLM pitch synthesis, Contextual Multi-Armed Bandit sensory framework optimization, dynamic store promotions, streaming CRM lead export, and an asynchronous outbound enterprise CRM Webhook Relay with HMAC-SHA256 signature verification.
+
+## What Was Accomplished in v1.5.0 (Outbound CRM Webhook Relay & Cryptographic Signature Dispatch)
+1. **Asynchronous Webhook Engine (`hub/webhooks.py`)**:
+   - Implemented `WebhookManager` handling background HTTP POST dispatches without blocking the FastAPI event loop using `asyncio.create_task` and thread executor workers.
+   - Built cryptographic HMAC-SHA256 signature calculation (`generate_signature`) returning `sha256=<hex_digest>` headers over JSON payload bodies.
+   - Included millisecond timestamp headers (`X-Sirens-Timestamp`) and User-Agent identification (`Project-Sirens-Relay/1.5.0`).
+   - Granular event filtering supporting `all`, `NEW_INTERACTION`, `LEAD_QUALIFIED`, and `FEEDBACK_RECORDED`.
+2. **REST Endpoints & Form Management (`hub/main.py`)**:
+   - Added `GET /api/webhooks/config` returning current webhook settings.
+   - Added `POST /api/webhooks/config` validating Pydantic schemas and persisting updates to `config/webhooks.json`.
+   - Added `POST /api/webhooks/test` sending live test ping dispatches to verify endpoint connectivity and HMAC header generation.
+   - Added `POST /update_webhooks` handling UI form updates using the PRG pattern with error reporting.
+   - Embedded automated dispatch triggers into `log_interaction` (`NEW_INTERACTION`) and `mark_lead` (`LEAD_QUALIFIED`).
+3. **Consolidated Dashboard UI Integration (`hub/templates/index.html`)**:
+   - Added dedicated "External CRM Webhook Relay" card featuring active/disabled status badge, destination URL, secret signing key, event subscription checkboxes, and interactive JavaScript test ping button with alert feedback.
+4. **Comprehensive Automated Testing & Visual Verification**:
+   - Authored 5 new tests in `tests/test_webhooks.py` verifying HMAC hash generation, disabled dispatch bypass, event filtering, REST API, test ping dispatch, and UI form redirects.
+   - Total test suite now stands at 44 passing tests (0 failures).
+   - Visually verified via Playwright capturing `/home/jules/verification/webhook_relay_v150.png`.
+
+## What Was Accomplished in v1.4.0 (Contextual Multi-Armed Bandit Scoring & Sensory Vision Integration)
+1. **Contextual Arm Affinity Engine (`hub/ab_engine.py`)**:
+   - Implemented `calculate_context_affinity(framework, dwell_time, distance_m)` and `select_contextual()` in `MultiArmedBanditEngine`.
+   - Built empirical vision context affinity multipliers:
+     - Distance $\le 1.2\text{m}$ (Close): Multiplier 1.4x for *Assumptive Close Narrative* and *Challenger Sales Framework*.
+     - Distance $> 2.5\text{m}$ (Far): Multiplier 1.5x for *Pattern Interrupt Cold-Open*.
+     - Dwell time $\ge 10.0\text{s}$: Multiplier 1.5x for *Consultative Problem-Solver*.
+     - Dwell time $< 3.0\text{s}$: Multiplier 1.4x for *Pattern Interrupt Cold-Open*.
+2. **Context-Aware API Endpoints (`hub/main.py`)**:
+   - Enhanced `POST /api/ab/select_framework` with optional `dwell_time_s` and `distance_m` query parameters, returning `context_affinity` alongside `selected_framework` and conversion statistics.
+   - Updated `POST /api/ab/config` and `/update_ab_config` with `contextual_weighting` boolean toggle.
+   - Dynamic simulation engine (`POST /simulate_detection`) evaluates contextual bandit framework allocation when set to `auto`.
+3. **Consolidated Dashboard UI Controls (`hub/templates/index.html`)**:
+   - Added `Enable Vision Context Affinity Weighting` checkbox and active status pill (`Contextual: ENABLED`) to the Bandit Algorithmic Tuning card.
+4. **Automated Testing & Full Test Suite Integrity**:
+   - Added unit tests in `tests/test_ab_engine.py` for contextual affinity calculation, contextual arm selection under approaching vs lingering scenarios, and API context queries.
+   - Total test suite now stands at 39 passing tests (0 failures).
 
 ## What Was Accomplished in v1.3.0 (Multi-Armed Bandit Algorithmic Refinement & Dynamic Routing)
 1. **Multi-Algorithm Optimization Engine (`hub/ab_engine.py`)**:

@@ -1,5 +1,28 @@
 # CHANGELOG
 
+## [1.5.1] - Dynamic Promotional Engine & Multi-Armed Bandit VLM Synthesis
+- **Dynamic Promotional Matching Engine (`src/llm_client.py`)**: Implemented `match_promotions()` evaluating customer sensory attributes (dwell time, proximity distance, apparel keywords like jackets/outerwear) against configured promotional rules in `config/inventory.json`.
+- **Bandit Empirical Guidance in VLM Prompts (`src/llm_client.py`)**: Enhanced `construct_system_prompt()` to dynamically inject real-time conversion rates, Wilson 95% confidence intervals, and empirical strategic directives from the Multi-Armed Bandit engine.
+- **Multimodal Urgency & Promotional Synthesis (`src/llm_client.py`)**: Updated `format_multimodal_user_content()` and fallback pitch generation in `generate_sales_response()` to inject matched promotional incentives alongside calibrated urgency/scarcity directives.
+- **Simulated Detection Telemetry Integration (`hub/main.py`)**: Updated `/simulate_detection` to query bandit performance metrics (`get_framework_performance`) and pass empirical conversion statistics into VLM stream generation.
+- **Unit & Integration Test Suite Expansion (`tests/test_promotions.py`, `tests/test_conversation.py`)**: Added dedicated tests for sensory promotional matching and bandit prompt synthesis with 100% test pass rate across 46 tests.
+
+## [1.5.0] - Outbound CRM Webhook Relay & Cryptographic Signature Dispatch
+- **Asynchronous Webhook Relay Engine (`hub/webhooks.py`)**: Implemented non-blocking background HTTP dispatch system (`WebhookManager`) integrating external CRMs and marketing automation platforms (Salesforce, HubSpot, Zapier).
+- **HMAC-SHA256 Cryptographic Verification**: Generates hexadecimal signatures (`X-Sirens-Signature: sha256=<digest>`) and timestamp headers (`X-Sirens-Timestamp`) over JSON payload bodies using configurable endpoint secret keys.
+- **Granular Event Filtering**: Supports subscribing to specific interaction lifecycle events (`all`, `NEW_INTERACTION`, `LEAD_QUALIFIED`, `FEEDBACK_RECORDED`).
+- **REST & UI Configuration Management**: Added `GET /api/webhooks/config`, `POST /api/webhooks/config`, `POST /api/webhooks/test` (live mock test dispatch), and `POST /update_webhooks` form handler.
+- **Automated Lifecycle Hooks**: Linked webhook dispatches into `log_interaction` (`NEW_INTERACTION`) and `mark_lead` (`LEAD_QUALIFIED`) in `hub/main.py`.
+- **External Webhook Dashboard Card (`hub/templates/index.html`)**: Added dedicated management card with active/disabled badges, endpoint URL input, secret key field, event checkboxes, and interactive JavaScript ping test button.
+- **Webhook Test Suite (`tests/test_webhooks.py`)**: Authored comprehensive unit and integration tests verifying HMAC generation, event filtering, async background execution, API schemas, and form handlers.
+
+## [1.4.0] - Contextual Multi-Armed Bandit Scoring & Sensory Vision Integration
+- **Contextual Arm Affinity Engine (`hub/ab_engine.py`)**: Implemented `calculate_context_affinity` and `select_contextual` dynamically weighting framework arms according to customer proximity distance and dwell time.
+- **Sensory Affinity Heuristics**: Close proximity (≤1.2m) boosts Assumptive Close and Challenger frameworks; Far distance (>2.5m) boosts Pattern Interrupt Cold-Open; Extended dwell (≥10s) boosts Consultative Problem-Solver.
+- **Context-Aware API Endpoints (`hub/main.py`)**: Updated `POST /api/ab/select_framework` to accept `dwell_time_s` and `distance_m` query parameters, returning the contextual affinity multiplier alongside chosen strategy and conversion rate.
+- **Dynamic Simulation Integration**: Cold-open pitch simulation (`POST /simulate_detection`) evaluates real-time contextual bandit allocation when set to `auto` routing.
+- **Contextual Tuning UI Controls (`hub/templates/index.html`)**: Added Contextual Weighting toggle switch and active status badge within the Bandit Algorithmic Tuning card.
+
 ## [1.3.0] - Multi-Armed Bandit Algorithmic Refinement & Dynamic Routing
 - **Multi-Algorithm Optimization Engine (`hub/ab_engine.py`)**: Expanded Multi-Armed Bandit capabilities beyond Thompson Sampling to include Upper Confidence Bound (UCB1) and Epsilon-Greedy with geometric exploration decay.
 - **Exploration Decay & Floor (`decay_epsilon`)**: Automatically decays exploration epsilon ($\epsilon \cdot \text{decay\_rate}$) down to a configurable minimum boundary ($\text{min\_\epsilon}$).

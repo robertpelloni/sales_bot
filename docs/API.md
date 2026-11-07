@@ -20,7 +20,7 @@ Webhook designed to log the completed conversation strings and visual attributes
 {
   "status": "healthy",
   "service": "Project Sirens Hub",
-  "version": "1.2.0",
+  "version": "1.5.0",
   "mock_vision": true,
   "camera_index": "0",
   "has_openai_key": false,
@@ -62,7 +62,54 @@ Webhook designed to log the completed conversation strings and visual attributes
 }
 ```
 
----
+### 15. `GET /api/webhooks/config`
+- **Description**: Retrieves current outbound CRM webhook relay configuration (enabled status, destination URL, secret key presence, subscribed events).
+- **Response**:
+```json
+{
+  "enabled": true,
+  "url": "https://api.crm.example.com/v1/leads",
+  "secret_key": "sirens_sec_...",
+  "events": ["NEW_INTERACTION", "LEAD_QUALIFIED"],
+  "timeout_seconds": 5
+}
+```
+
+### 16. `POST /api/webhooks/config`
+- **Description**: Updates outbound CRM webhook destination, secret verification key, and subscribed events.
+- **Request Body**:
+```json
+{
+  "enabled": true,
+  "url": "https://hooks.zapier.com/hooks/catch/123/abc",
+  "secret_key": "custom_secret_key",
+  "events": ["LEAD_QUALIFIED"],
+  "timeout_seconds": 5
+}
+```
+
+### 17. `POST /api/webhooks/test`
+- **Description**: Dispatches a live test mock payload asynchronously to the configured webhook endpoint, generating an HMAC-SHA256 signature.
+- **Response**:
+```json
+{
+  "status": "dispatched",
+  "event": "TEST_PING",
+  "url": "https://api.crm.example.com/v1/leads",
+  "signature_header": "X-Sirens-Signature: sha256=...",
+  "message": "Test webhook payload dispatched asynchronously."
+}
+```
+
+### 3. `POST /api/server/shutdown`
+- **Description**: Gracefully terminates the Hub server process after acknowledging the request.
+- **Response**:
+```json
+{
+  "status": "shutting_down",
+  "message": "Hub server is shutting down gracefully."
+}
+```
 
 ## 2. Simulation & Testing Endpoints
 These endpoints are utilized by the Hub UI to allow rapid A/B testing of the VLM logic without requiring actual physical vision events or Redis routing.
@@ -103,15 +150,19 @@ Invokes the core `src/llm_client.py` logic natively within the Hub container. It
 ```
 
 ### 10. `POST /api/ab/select_framework`
-- **Description**: Dynamically requests the bandit algorithm to allocate a sales framework for an incoming customer interaction.
-- **Query Parameter**: `method` (`thompson` or `epsilon_greedy`, default: `thompson`).
+- **Description**: Dynamically requests the bandit algorithm to allocate a sales framework for an incoming customer interaction, supporting vision context (dwell time and proximity distance).
+- **Query Parameters**:
+  - `method`: `thompson`, `epsilon_greedy`, or `ucb1`.
+  - `dwell_time_s`: (Optional) Customer dwell time in seconds.
+  - `distance_m`: (Optional) Calibrated spatial distance in meters.
 - **Response**:
 ```json
 {
-  "framework": "Challenger Sales Framework",
+  "status": "success",
+  "selected_framework": "Consultative Problem-Solver",
   "method": "thompson",
-  "trials": 15,
-  "win_rate": 0.4
+  "conversion_rate": 35.0,
+  "context_affinity": 1.5
 }
 ```
 
@@ -141,7 +192,8 @@ Invokes the core `src/llm_client.py` logic natively within the Hub container. It
   "epsilon": 0.20,
   "decay_rate": 0.99,
   "min_epsilon": 0.05,
-  "default_method": "thompson"
+  "default_method": "thompson",
+  "contextual_weighting": true
 }
 ```
 - **Response**:

@@ -43,7 +43,7 @@ def test_inventory_promotions_in_system_prompt():
     }
 
     prompt = construct_system_prompt(inventory, prompt_modifiers)
-    assert "Active Promotional Rules & Discounts:" in prompt
+    assert "Active Promotional Rules & Dynamic Discounts:" in prompt
     assert "Morning Rush Discount" in prompt
     assert "10.0" in prompt
 
@@ -95,3 +95,47 @@ def test_add_and_delete_promotion(client, monkeypatch, tmp_path):
     saved_after_delete = json.loads(test_inventory_file.read_text())
     assert len(saved_after_delete["promotions"]) == 1
     assert saved_after_delete["promotions"][0]["rule_name"] == "Flash 20"
+
+
+def test_match_promotions_personalization():
+    from src.llm_client import match_promotions
+
+    promos = [
+        {
+            "rule_name": "Rainy Outerwear Promo",
+            "discount_percent": 20.0,
+            "trigger_type": "weather_or_apparel",
+            "threshold": "outerwear",
+            "description": "20% off all jackets"
+        },
+        {
+            "rule_name": "Dwell 10s Promo",
+            "discount_percent": 15.0,
+            "trigger_type": "dwell_time",
+            "threshold": "10s",
+            "description": "15% off for browsing"
+        },
+        {
+            "rule_name": "Storewide 5",
+            "discount_percent": 5.0,
+            "trigger_type": "all_items",
+            "threshold": "",
+            "description": "5% off"
+        }
+    ]
+
+    # Customer wearing jacket but low dwell
+    packet_jacket = {"attributes": ["warm jacket", "sneakers"], "dwell_time_s": 3.0}
+    matched = match_promotions(promos, packet_jacket)
+    rule_names = [m["rule_name"] for m in matched]
+    assert "Rainy Outerwear Promo" in rule_names
+    assert "Storewide 5" in rule_names
+    assert "Dwell 10s Promo" not in rule_names
+
+    # Customer dwelling > 10s without jacket
+    packet_dwell = {"attributes": ["t-shirt", "coffee"], "dwell_time_s": 12.0}
+    matched_dwell = match_promotions(promos, packet_dwell)
+    rule_names_dwell = [m["rule_name"] for m in matched_dwell]
+    assert "Dwell 10s Promo" in rule_names_dwell
+    assert "Storewide 5" in rule_names_dwell
+    assert "Rainy Outerwear Promo" not in rule_names_dwell
