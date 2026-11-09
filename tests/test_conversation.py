@@ -211,6 +211,69 @@ def test_derive_customer_persona():
     assert p5["persona"] == "Spontaneous Shopper"
 
 
+@pytest.mark.asyncio
+async def test_persona_variations_with_promotions():
+    """
+    Verifies that various customer personas receive tailored opening pitches
+    combined with dynamically triggered store promotions and scarcity hooks.
+    """
+    if "OPENAI_API_KEY" in os.environ:
+        del os.environ["OPENAI_API_KEY"]
+
+    # 1. Athletic persona with dwell discount
+    athletic_packet = {
+        "attributes": ["runner sneakers", "athletic socks"],
+        "dwell_time_s": 32.0,
+        "proximity": "1.1m (close)",
+        "distance_m": 1.1,
+        "matched_promos": [{"rule_name": "Dwell Engagement Bundle", "discount_percent": 20.0}]
+    }
+    p_athletic = await generate_sales_response("Mock prompt", athletic_packet)
+    assert "SonicStride" in p_athletic
+    assert "Dwell Engagement Bundle" in p_athletic
+    assert "20.0% off" in p_athletic
+    assert "units left" in p_athletic  # Critical scarcity (dwell >= 5s and close)
+
+    # 2. Weather traveler persona with outerwear promo
+    weather_packet = {
+        "attributes": ["heavy winter coat", "windbreaker"],
+        "dwell_time_s": 3.5,
+        "proximity": "1.8m (mid-range)",
+        "distance_m": 1.8,
+        "matched_promos": [{"rule_name": "Rainy Day Flash Sale", "discount_percent": 15.0}]
+    }
+    p_weather = await generate_sales_response("Mock prompt", weather_packet)
+    assert "winter coat" in p_weather
+    assert "Rainy Day Flash Sale" in p_weather
+    assert "15.0% off" in p_weather
+    assert "flying off the rack" in p_weather  # High urgency (dwell >= 3s)
+
+    # 3. Lifestyle browser with coffee
+    lifestyle_packet = {
+        "attributes": ["iced coffee cup", "tote bag"],
+        "dwell_time_s": 1.0,
+        "proximity": "1.5m (mid-range)",
+        "distance_m": 1.5,
+        "matched_promos": []
+    }
+    p_lifestyle = await generate_sales_response("Mock prompt", lifestyle_packet)
+    assert "coffee fuel" in p_lifestyle
+    assert "featured accessories" in p_lifestyle
+
+    # 4. Deep Evaluator / Quality Seeker with high dwell time
+    quality_packet = {
+        "attributes": ["formal business shoes"],
+        "dwell_time_s": 7.0,
+        "proximity": "2.0m (mid-range)",
+        "distance_m": 2.0,
+        "matched_promos": [{"rule_name": "VIP Quality Incentive", "discount_percent": 10.0}]
+    }
+    p_quality = await generate_sales_response("Mock prompt", quality_packet)
+    assert "craftsmanship" in p_quality
+    assert "hydrophobic nanopore weave" in p_quality
+    assert "VIP Quality Incentive" in p_quality
+
+
 def test_format_multimodal_user_content():
     """Verifies format_multimodal_user_content constructs image_url when base64 frame is present."""
     # Without image
